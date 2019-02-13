@@ -95,18 +95,18 @@ private:
     frc::MecanumDrive m_drive{m_frontLeft, m_rearLeft, m_frontRight, m_rearRight};
 
 	//Solenoid declaration (CAN)
-	frc::Solenoid s_solenoidOne{CanZero};
-	frc::Solenoid s_solenoidTwo{CanOne};
+	frc::Solenoid m_solenoidOne{CanZero};
+	frc::Solenoid m_solenoidTwo{CanOne};
 
 	//Other motor definitions
 	frc::PWMVictorSPX m_spinL{PWMFour};
 	frc::PWMVictorSPX m_spinR{PWMFive};
 
 	//Ultrasonic initialization
-	AnalogInput *exampleAnalog = new AnalogInput(AnalogZero);
+	AnalogInput *m_Ultrasonic = new AnalogInput(AnalogZero);
 
 	//Gyroscope initialization
-	AHRS  *ahrs = new AHRS(SPI::Port::kMXP);
+	AHRS  *m_ahrs = new AHRS(SPI::Port::kMXP);
 
 	//Servo init
 	Servo *m_servo = new Servo(1); //Figure out how to wire and get a real port
@@ -120,8 +120,8 @@ private:
  	frc::Timer m_timer;
 
 	 //Counter init
-	Counter *counterMag = new Counter(PWMEight);
-	Counter *counterIndex = new Counter(PWMNine);
+	Counter *m_counterMag = new Counter(PWMEight);
+	Counter *m_counterIndex = new Counter(PWMNine);
 
 public:
 	//Ultrasonic calculation variables
@@ -131,15 +131,19 @@ public:
 	//Robot init function
 	void RobotInit() override
   	{	  	
-		//drive expiration? check later
-    	m_drive.SetExpiration(0.1);
-
 		//Start the timer
     	m_timer.Start();
 
 		//Counter settings
-		counterMag->SetSemiPeriodMode(true);
-		counterIndex->SetSemiPeriodMode(false);
+		m_counterMag->SetSemiPeriodMode(true);
+		m_counterIndex->SetSemiPeriodMode(false);
+
+		/*
+		Safeties
+		*/
+		m_drive.SetSafetyEnabled(false);
+		//drive expiration? check later
+    	m_drive.SetExpiration(0.1);
 
 	//Start VisionThread in a seperate thread
 	#if defined(__linux__)
@@ -159,8 +163,8 @@ public:
     	m_timer.Start();
 
 		//Encoder resets before we start autonomous
-		counterMag->Reset();
-		counterIndex->Reset();
+		m_counterMag->Reset();
+		m_counterIndex->Reset();
 	}
 	void AutonomousPeriodic() override
 	{
@@ -175,50 +179,80 @@ public:
 
 	void TeleopPeriodic() override
 	{
-		// Driving with Mecanum
-    	m_drive.DriveCartesian(m_stick.GetX(), (m_stick.GetY()*-1), m_stick.GetZ(), ahrs->GetAngle());
+		//Counter variable declaration
+		double angleDEG;
+		double angleRAD;
 
-		//Safeties
-		m_drive.SetSafetyEnabled(false);
-
-		//Gyroscope reset
-		bool reset_yaw_button_pressed = m_stick.GetRawButton(bottomBottomRight);
-    	if ( reset_yaw_button_pressed ) 
+		//Main While Loop
+		while(frc::RobotBase::IsEnabled() && frc::RobotBase::IsOperatorControl())
 		{
-        	ahrs->ZeroYaw();
-		} 
+			/*
+			Drive code
+			*/
+			//Driving with Mecanum (Field oriented with NavX)
+			m_drive.DriveCartesian(m_stick.GetX(), (m_stick.GetY()*-1), m_stick.GetZ(), m_ahrs->GetAngle());
 
-		//Trying to calculate the ultrasonic sensor value in mm
-		distToWall = (exampleAnalog->GetValue()/ultraCal);
+			/*
+			navX code
+			*/
+			//Gyroscope reset
+			bool reset_yaw_button_pressed = m_stick.GetRawButton(bottomBottomRight);
+			if ( reset_yaw_button_pressed ) 
+			{
+				m_ahrs->ZeroYaw();
+			} 
 
-		//Throwing it up to the dashboard the only way I know how :)
-		SmartDashboard::PutNumber("Distance to wall", distToWall);
+			/*
+			Ultrasonic code
+			*/
+			//Trying to calculate the ultrasonic sensor value in mm
+			distToWall = (m_Ultrasonic->GetValue()/ultraCal);
 
-		//Solenoid Control Declaration
-		s_solenoidOne.Set(m_stick.GetRawButton(bottomTopLeft));
-		s_solenoidTwo.Set(m_stick.GetRawButton(bottomTopRight));
+			/*
+			Solenoid Control Declaration
+			*/
+			m_solenoidOne.Set(m_stick.GetRawButton(bottomTopLeft));
+			m_solenoidTwo.Set(m_stick.GetRawButton(bottomTopRight));
+			
+			/*
+			Counter code
+			*/
+			double Mag = m_counterMag->GetPeriod();
+			double Index = m_counterIndex->GetPeriod();
 
-		//Encoder get code
-		double Mag = counterMag->GetPeriod();
-		double Index = counterIndex->GetPeriod();
+			// The 9.73e-4 is the total period of the PWM output on the am-3749
+			// The value will then be divided by the period to get duty cycle.
+			// This is converted to degrees and Radians
+			angleDEG = (Mag/9.739499999999999E-4)*361 -1;
+			angleRAD = (Mag/9.739499999999999E-4)*2*(PI);
 
-		//Put coder info on dashboard
-		SmartDashboard::PutNumber("Rotations", counterIndex->Get());
-		SmartDashboard::PutNumber("Intermediate", Mag);
+			/*
+			Debugging
+			*/
+			//Joystick HAT testing
+			SmartDashboard::PutNumber("POV test",  m_stick.GetPOV());
+			
+			SmartDashboard::PutNumber("POV count test",  m_stick.GetPOVCount());
 
-		// The 9.73e-4 is the total period of the PWM output on the am-3749
-		// The value will then be divided by the period to get duty cycle.
-		// This is converted to degrees and Radians
-		double angleDEG = (Mag/9.739499999999999E-4)*361 -1;
-		double angleRAD = (Mag/9.739499999999999E-4)*2*(PI);
+			//Raw Counter Info
+			SmartDashboard::PutNumber("Rotations", m_counterIndex->Get());
+			SmartDashboard::PutNumber("Intermediate", Mag);
 
-		SmartDashboard::PutNumber("Angle in Degrees", angleDEG);
-		SmartDashboard::PutNumber("Angle in Radians", angleRAD);
+			//Processed Counter info
+			SmartDashboard::PutNumber("Angle in Degrees", angleDEG);
+			SmartDashboard::PutNumber("Angle in Radians", angleRAD);
 
-		//Seperate Functions for organization and simplicity (Declared below)
-		//Spin(); If we need to test the lift with a simple up/down button architecture, reenable this.
-		SonicCalibration();
-		Lift();
+			//Processed Ultrasonic info
+			SmartDashboard::PutNumber("Distance to wall", distToWall);
+
+			/*
+			Seperate Functions for organization and simplicity (Declared below)
+			*/
+
+			//Spin(); If we need to test the lift with a simple up/down button architecture, re-enable this.
+			SonicCalibration();
+			Lift();
+		}
     }
 
 	//TEST FUNCTION (for if we ever need to do anything to test specifically I guess)
@@ -244,9 +278,17 @@ public:
 	//Lift control code (Spin but PID implementation)
 	void Lift()
 	{
+		/*switch (m_stick::GetPOV())
+		{
+			case:
+				break;
 		
+			default:
+				break;
+		} */
 	}
 
+	//DEPRECATED
 	//Lift Motor spinng logic/control declaration
 	void Spin() 
 	{
