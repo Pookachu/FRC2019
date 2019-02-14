@@ -79,71 +79,86 @@ private:
 	static constexpr int CanThree = 3;
 
 	//Joystick declaration
-	frc::Joystick m_stick{1};
+	frc::Joystick m_stick{0};
 
 	//Drive motor declarations
 	/*
-    0/| |\2
     1\| |/3
-    */
+	0/| |\2
+	1\| |/3
+	*/
 	frc::Spark m_frontLeft{PWMZero};
-    frc::Spark m_rearLeft{PWMOne};
-    frc::Spark m_frontRight{PWMTwo};
-    frc::Spark m_rearRight{PWMThree};
+	frc::Spark m_rearLeft{PWMOne};
+	frc::Spark m_frontRight{PWMTwo};
+	frc::Spark m_rearRight{PWMThree};
 
 	//Initiating robot drive at m_drive
-    frc::MecanumDrive m_drive{m_frontLeft, m_rearLeft, m_frontRight, m_rearRight};
+	frc::MecanumDrive m_drive{m_frontLeft, m_rearLeft, m_frontRight, m_rearRight};
 
 	//Solenoid declaration (CAN)
-	frc::Solenoid m_solenoidOne{CanZero};
-	frc::Solenoid m_solenoidTwo{CanOne};
+	//frc::Solenoid m_solenoidOne{CanZero};
+	//frc::Solenoid m_solenoidTwo{CanOne};
 
 	//Other motor definitions
-	frc::PWMVictorSPX m_spinL{PWMFour};
-	frc::PWMVictorSPX m_spinR{PWMFive};
+	//Lift
+	frc::PWMVictorSPX m_lift{PWMFour};
 
+	//Tilt
+	frc::Spark m_tilt {PWMFive};
+	
+	//Grab
+	frc::Spark m_grab{PWMSix};
+
+	//Servo init
+	Servo *m_servo = new Servo(PWMSeven);
+
+	//Sensor definitions
 	//Ultrasonic initialization
 	AnalogInput *m_Ultrasonic = new AnalogInput(AnalogZero);
 
 	//Gyroscope initialization
 	AHRS  *m_ahrs = new AHRS(SPI::Port::kMXP);
 
-	//Servo init
-	Servo *m_servo = new Servo(1); //Figure out how to wire and get a real port
-
 	/*ai = new AnalogInput(0);*/
 
-	//LiveWindow init
-	//frc::LiveWindow& m_lw = *frc::LiveWindow::GetInstance();
+	//Counter init
+	Encoder *m_encoder = new Encoder(0,1, false, Encoder::EncodingType::k4X);
 
+	//Limit switch init
+	DigitalInput *m_topLimit = new DigitalInput(2);
+	DigitalInput *m_bottomLimit = new DigitalInput(3);
+	DigitalInput *m_climbLimit = new DigitalInput(4);
+
+	//Misc Declarations
 	//Timer init
  	frc::Timer m_timer;
 
-	 //Counter init
-	Counter *m_counterMag = new Counter(PWMEight);
-	Counter *m_counterIndex = new Counter(PWMNine);
-
+	//LiveWindow init
+	//frc::LiveWindow& m_lw = *frc::LiveWindow::GetInstance();
 public:
 	//Ultrasonic calculation variables
 	double ultraCal = 3.25;
 	double distToWall;
 
+	//counter variables
+	double diameter = 6/12; // 6 inch wheels
+	double dist =0.5*3.14/1024;  // ft per pulse
+
 	//Robot init function
 	void RobotInit() override
   	{	  	
 		//Start the timer
-    	m_timer.Start();
+		m_timer.Start();
 
 		//Counter settings
-		m_counterMag->SetSemiPeriodMode(true);
-		m_counterIndex->SetSemiPeriodMode(false);
+		m_encoder->SetDistancePerPulse(dist);
 
 		/*
 		Safeties
 		*/
 		m_drive.SetSafetyEnabled(false);
 		//drive expiration? check later
-    	m_drive.SetExpiration(0.1);
+		m_drive.SetExpiration(0.1);
 
 	//Start VisionThread in a seperate thread
 	#if defined(__linux__)
@@ -163,8 +178,7 @@ public:
     	m_timer.Start();
 
 		//Encoder resets before we start autonomous
-		m_counterMag->Reset();
-		m_counterIndex->Reset();
+		m_encoder->Reset();
 	}
 	void AutonomousPeriodic() override
 	{
@@ -174,14 +188,12 @@ public:
 	//TELEOP FUNCTIONS
 	void TeleopInit() override
 	{
-
 	}
 
 	void TeleopPeriodic() override
 	{
 		//Counter variable declaration
-		double angleDEG;
-		double angleRAD;
+
 
 		//Main While Loop
 		while(frc::RobotBase::IsEnabled() && frc::RobotBase::IsOperatorControl())
@@ -211,36 +223,26 @@ public:
 			/*
 			Solenoid Control Declaration
 			*/
-			m_solenoidOne.Set(m_stick.GetRawButton(bottomTopLeft));
-			m_solenoidTwo.Set(m_stick.GetRawButton(bottomTopRight));
+			//m_solenoidOne.Set(m_stick.GetRawButton(bottomTopLeft));
+			//m_solenoidTwo.Set(m_stick.GetRawButton(bottomTopRight));
 			
 			/*
 			Counter code
 			*/
-			double Mag = m_counterMag->GetPeriod();
-			double Index = m_counterIndex->GetPeriod();
-
-			// The 9.73e-4 is the total period of the PWM output on the am-3749
-			// The value will then be divided by the period to get duty cycle.
-			// This is converted to degrees and Radians
-			angleDEG = (Mag/9.739499999999999E-4)*361 -1;
-			angleRAD = (Mag/9.739499999999999E-4)*2*(PI);
 
 			/*
 			Debugging
 			*/
 			//Joystick HAT testing
-			SmartDashboard::PutNumber("POV test",  m_stick.GetPOV());
-			
-			SmartDashboard::PutNumber("POV count test",  m_stick.GetPOVCount());
+			//SmartDashboard::PutNumber("POV test",  m_stick.GetPOV());
+
+			//SmartDashboard::PutNumber("POV count test",  m_stick.GetPOVCount());
 
 			//Raw Counter Info
-			SmartDashboard::PutNumber("Rotations", m_counterIndex->Get());
-			SmartDashboard::PutNumber("Intermediate", Mag);
+			SmartDashboard::PutNumber("Encoder Ticks", m_encoder->Get());
 
 			//Processed Counter info
-			SmartDashboard::PutNumber("Angle in Degrees", angleDEG);
-			SmartDashboard::PutNumber("Angle in Radians", angleRAD);
+			SmartDashboard::PutNumber("Distance", m_encoder->GetDistance());
 
 			//Processed Ultrasonic info
 			SmartDashboard::PutNumber("Distance to wall", distToWall);
@@ -249,9 +251,9 @@ public:
 			Seperate Functions for organization and simplicity (Declared below)
 			*/
 
-			//Spin(); If we need to test the lift with a simple up/down button architecture, re-enable this.
+			Spin(); //If we need to test the lift with a simple up/down button architecture, re-enable this.
 			SonicCalibration();
-			Lift();
+			//Lift();
 		}
     }
 
@@ -276,6 +278,14 @@ public:
 	}
 
 	//Lift control code (Spin but PID implementation)
+	void Grab()
+	{
+
+	}
+	void Tilt()
+	{
+
+	}
 	void Lift()
 	{
 		/*switch (m_stick::GetPOV())
@@ -293,22 +303,20 @@ public:
 	void Spin() 
 	{
 		//If bottom button is pressed and top button is not
-		if( m_stick.GetRawButton(topBottomLeft) && ( ! ( m_stick.GetRawButton(topTopLeft) ) ) )
+		if( m_stick.GetRawButton(topBottomLeft) && ( ! ( m_stick.GetRawButton(topTopLeft) ) ) && ( ! (m_topLimit->Get() ) ) && ( ! (m_bottomLimit->Get() ) ) )
 		{
-			m_spinL.Set(1);
-			m_spinR.Set(-1);
+			m_lift.Set(1);
 		}
 		//If top button is pressed and bottom botton is not
-		if( m_stick.GetRawButton (topTopLeft) && ( ! ( m_stick.GetRawButton (topBottomLeft) ) ) )
+		if( m_stick.GetRawButton (topTopLeft) && ( ! ( m_stick.GetRawButton (topBottomLeft) ) ) && ( ! (m_topLimit->Get() ) ) && ( ! (m_bottomLimit-> Get() ) ) )
 		{
-			m_spinL.Set(-1);
-			m_spinR.Set(1);
+			m_lift.Set(-1);
 		}
 		//If both top and bottom buttons are not pressed or if both top and bottom buttons are pressed
-		if( ( ( ! ( m_stick.GetRawButton (topBottomLeft) ) ) && ( ! ( m_stick.GetRawButton (topTopLeft) ) ) ) || ( m_stick.GetRawButton (topTopLeft) && m_stick.GetRawButton (topBottomLeft) ) ) 
+		if( ( ( ! ( m_stick.GetRawButton (topBottomLeft) ) ) && ( ! ( m_stick.GetRawButton (topTopLeft) ) ) ) 
+		|| ( m_stick.GetRawButton (topTopLeft) && m_stick.GetRawButton (topBottomLeft) ) ) 
 		{
-			m_spinL.Set(0);
-			m_spinR.Set(0);
+			m_lift.Set(0);
 		}
 	}
 
