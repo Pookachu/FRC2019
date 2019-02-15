@@ -22,20 +22,6 @@ private:
 	//Static PI declaration
 	static constexpr double PI = 3.14159265359;
 
-	//Static button declarations
-	static constexpr int trigger = 1;
-	static constexpr int stickSide = 2;
-	static constexpr int topBottomLeft = 3;
-	static constexpr int topBottomRight = 4;
-	static constexpr int topTopLeft = 5;
-	static constexpr int topTopRight = 6;
-	static constexpr int bottomTopLeft = 7;
-	static constexpr int bottomTopRight = 8;
-	static constexpr int bottomMiddleLeft = 9;
-	static constexpr int bottomMiddleRight = 10;
-	static constexpr int bottomBottomLeft = 11;
-	static constexpr int bottomBottomRight = 12;
-
 	//Static PWM port declarations
 	static constexpr int PWMZero = 0;
 	static constexpr int PWMOne = 1;
@@ -124,8 +110,8 @@ private:
 	Encoder *m_encoder = new Encoder(0,1, false, Encoder::EncodingType::k4X);
 
 	//Limit switch init
-	DigitalInput *m_topLimit = new DigitalInput(2);
-	DigitalInput *m_bottomLimit = new DigitalInput(3);
+	DigitalInput *m_topLimit = new DigitalInput(3);
+	DigitalInput *m_bottomLimit = new DigitalInput(6);
 	DigitalInput *m_climbLimit = new DigitalInput(4);
 
 	//Misc Declarations
@@ -140,8 +126,11 @@ public:
 	double distToWall;
 
 	//counter variables
-	double diameter = 6/12; // 6 inch wheels
+//	double diameter = 6/12; // 6 inch wheels
 	double dist =0.5*3.14/1024;  // ft per pulse
+
+	bool navxD = 0;
+	bool navxDR;
 
 	//Robot init function
 	void RobotInit() override
@@ -193,26 +182,9 @@ public:
 	{
 		//Counter variable declaration
 
-
 		//Main While Loop
 		while(frc::RobotBase::IsEnabled() && frc::RobotBase::IsOperatorControl())
 		{
-			/*
-			Drive code
-			*/
-			//Driving with Mecanum (Field oriented with NavX)
-			m_drive.DriveCartesian(m_stick.GetX(), (m_stick.GetY()*-1), m_stick.GetZ(), m_ahrs->GetAngle());
-
-			/*
-			navX code
-			*/
-			//Gyroscope reset
-			bool reset_yaw_button_pressed = m_stick.GetRawButton(bottomBottomRight);
-			if ( reset_yaw_button_pressed ) 
-			{
-				m_ahrs->ZeroYaw();
-			} 
-
 			/*
 			Ultrasonic code
 			*/
@@ -236,7 +208,9 @@ public:
 			//SmartDashboard::PutNumber("POV test",  m_stick.GetPOV());
 
 			//SmartDashboard::PutNumber("POV count test",  m_stick.GetPOVCount());
+			m_servo->Set(((m_stick.GetThrottle()+1)/2));
 
+			SmartDashboard::PutNumber("Drive Throttle", m_stick.GetThrottle());
 			//Raw Counter Info
 			SmartDashboard::PutNumber("Encoder Ticks", m_encoder->Get());
 
@@ -246,12 +220,20 @@ public:
 			//Processed Ultrasonic info
 			SmartDashboard::PutNumber("Distance to wall", distToWall);
 
+			SmartDashboard::PutBoolean("Limit switch top", m_topLimit->Get());
+			SmartDashboard::PutBoolean("Limit switch bottom", m_bottomLimit->Get());
+			SmartDashboard::PutBoolean("Limit switch climb", m_climbLimit->Get());
+			SmartDashboard::PutBoolean("navX drive", navxD);
+			SmartDashboard::PutBoolean("navX drive (Really)", navxDR);
 			/*
 			Seperate Functions for organization and simplicity (Declared below)
 			*/
 
+			Tilt();
+			Grab();
 			Spin(); //If we need to test the lift with a simple up/down button architecture, re-enable this.
 			SonicCalibration();
+			Drive();
 			//Lift();
 		}
     }
@@ -262,15 +244,53 @@ public:
 
 	}
 
+	//navX code
+	void NavX()
+	{
+		//Gyroscope reset
+		bool reset_yaw_button_pressed = m_stick.GetRawButton(1);
+		if ( reset_yaw_button_pressed ) 
+		{
+			m_ahrs->ZeroYaw();
+		} 
+	}
+	//Drive code
+	void Drive()
+	{
+		if(m_stick.GetRawButton(2))
+			{
+				if(navxD == 1)
+				{
+					navxD = 0;
+				}
+				else
+				{
+					navxD = 1;
+				}
+			}
+
+			if(navxD == 1) 
+			{
+				//Driving with Mecanum (Field oriented with NavX)
+				m_drive.DriveCartesian(m_stick.GetX(), (m_stick.GetY()), m_stick.GetZ(), m_ahrs->GetAngle());
+				navxDR = 1;
+			}
+			else
+			{
+				//Driving with Mecanum (Robot oriented)
+				m_drive.DriveCartesian(m_stick.GetX(), ((m_stick.GetY())*-1), m_stick.GetZ());
+				navxDR = 0;
+			}
+	}
 	//Ultra Sonic Calibration Function Declaration
 	void SonicCalibration() 
 	{	
-		if(m_stick.GetRawButton(topTopRight)) 
+		if(m_stick.GetRawButton(6)) 
 		{
 			ultraCal = ultraCal +.01;
 		}
 
-		if(m_stick.GetRawButton(topBottomRight)) 
+		if(m_stick.GetRawButton(4)) 
 		{
 			ultraCal = ultraCal -.01;
 		}
@@ -279,12 +299,35 @@ public:
 	//Lift control code (Spin but PID implementation)
 	void Grab()
 	{
-
+		if(m_stick.GetRawButton(6))
+		{
+			m_grab.Set(.5);
+		}
+		else if(m_stick.GetRawButton(4))
+		{
+			m_grab.Set(-.5);
+		}
+		else
+		{
+			m_grab.Set(0);
+		}
 	}
 	void Tilt()
 	{
-
+		if(m_stick.GetRawButton(8))
+		{
+			m_tilt.Set(.5);
+		}
+		else if(m_stick.GetRawButton(10))
+		{
+			m_tilt.Set(-.5);
+		}
+		else
+		{
+			m_tilt.Set(0);
+		}
 	}
+
 	void Lift()
 	{
 		/*switch (m_stick::GetPOV())
@@ -301,22 +344,55 @@ public:
 	//Lift Motor spinng logic/control declaration
 	void Spin() 
 	{
-		//If bottom button is pressed and top button is not
-		if( m_stick.GetRawButton(topBottomLeft) && ( ! ( m_stick.GetRawButton(topTopLeft) ) ) && ( ! (m_topLimit->Get() ) ) && ( ! (m_bottomLimit->Get() ) ) )
+		bool liftZero;
+		bool liftUp;
+		bool liftDown;
+		//if either button
+		if( ( m_stick.GetRawButton(3) ) || ( m_stick.GetRawButton(5) ) )
 		{
-			m_lift.Set(1);
+			liftZero = 0;
+
+			//UP
+			//if 3 but not 5 and top limit not pressed
+			if( (m_stick.GetRawButton(5) ) && ( ! ( m_stick.GetRawButton(3) ) ) && ( m_topLimit->Get() ) )
+			{
+
+				m_lift.Set(-.5);
+				liftUp = 1;
+			}
+			else
+			{
+
+				m_lift.Set(0);
+				liftUp = 0;
+			}
+
+			//DOWN
+			//if 5 but not 3 and bottom limit not pressed
+			if( (m_stick.GetRawButton(3) ) && ( ! ( m_stick.GetRawButton(5) ) ) &&  ( m_topLimit->Get() ) )
+			{
+
+				m_lift.Set(.5);
+				liftDown = 1;
+			}
+			else
+			{
+
+				m_lift.Set(0);
+				liftDown = 0;
+			}
+		
 		}
-		//If top button is pressed and bottom botton is not
-		if( m_stick.GetRawButton (topTopLeft) && ( ! ( m_stick.GetRawButton (topBottomLeft) ) ) && ( ! (m_topLimit->Get() ) ) && ( ! (m_bottomLimit-> Get() ) ) )
+		else
 		{
-			m_lift.Set(-1);
-		}
-		//If both top and bottom buttons are not pressed or if both top and bottom buttons are pressed
-		if( ( ( ! ( m_stick.GetRawButton (topBottomLeft) ) ) && ( ! ( m_stick.GetRawButton (topTopLeft) ) ) ) 
-		|| ( m_stick.GetRawButton (topTopLeft) && m_stick.GetRawButton (topBottomLeft) ) ) 
-		{
+
 			m_lift.Set(0);
+			liftZero = 1;
 		}
+		SmartDashboard::PutNumber("Servo Angel", m_servo->GetAngle());
+		SmartDashboard::PutBoolean("Lift Set zero", liftZero);
+		SmartDashboard::PutBoolean("Lift Set up", liftUp);
+		SmartDashboard::PutBoolean("Lift Set down", liftDown);
 	}
 
 	//VisionThread Declaration
