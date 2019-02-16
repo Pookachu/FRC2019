@@ -148,6 +148,8 @@ public:
 
 	double target = 0;
 	//Robot init function
+	bool started = 0;
+
 	void RobotInit() override
   	{	  	
 		//Start the timer
@@ -185,81 +187,95 @@ public:
 	}
 	void AutonomousPeriodic() override
 	{
-		if(m_bottomLimit->Get())
+		if(m_time.Get() <=2)
 		{
-			m_lift.Set(.3);
+			if(m_bottomLimit->Get())
+			{
+				m_lift.Set(.3);
+			}
+			else
+			{
+			m_encoder->Reset();
+			}
 		}
 		else
 		{
-			m_encoder->Reset();
+			Working();
 		}
+
 	}
+
 
 	void TeleopPeriodic() override
 	{
-		//Counter variable declaration
-		m_encoder->Reset();
-		//Main While Loop
-		while(frc::RobotBase::IsEnabled() && frc::RobotBase::IsOperatorControl())
+		//Init once (Pragma haha)
+		if(started==false)
 		{
-			/*
-			Ultrasonic code
-			*/
-			//Trying to calculate the ultrasonic sensor value in mm
-			distToWall = (m_Ultrasonic->GetValue()/ultraCal);
-
-			/*
-			Solenoid Control Declaration
-			*/
-			//m_solenoidOne.Set(m_stick.GetRawButton(bottomTopLeft));
-			//m_solenoidTwo.Set(m_stick.GetRawButton(bottomTopRight));
-
-			/*
-			Debugging
-			*/
-
-			//Joystick HAT testing
-			//SmartDashboard::PutNumber("POV test",  m_stick.GetPOV());
-
-			//SmartDashboard::PutNumber("POV count test",  m_stick.GetPOVCount());
-			//m_lift.Set(m_stick.GetThrottle()/2);
-
-			SmartDashboard::PutNumber("Drive Throttle", m_stick.GetThrottle());
-			//Raw Counter Info
-			SmartDashboard::PutNumber("Encoder Ticks", m_encoder->Get());
-
-			//Processed Counter info
-			SmartDashboard::PutNumber("Distance", m_encoder->GetDistance());
-
-			//Processed Ultrasonic info
-			SmartDashboard::PutNumber("Distance to wall", distToWall);
-
-			SmartDashboard::PutBoolean("Limit switch top", m_topLimit->Get());
-			SmartDashboard::PutBoolean("Limit switch bottom", m_bottomLimit->Get());
-			SmartDashboard::PutBoolean("Limit switch climb", m_climbLimit->Get());
-			SmartDashboard::PutBoolean("navX drive", navxD);
-			SmartDashboard::PutBoolean("navX drive (Really)", navxDR);
-			/*
-			Seperate Functions for organization and simplicity (Declared below)
-			*/
-			NavX();
-
-			Tilt();
-
-			Grab();
-
-			//Spin(); //If we need to test the lift with a simple up/down button architecture, re-enable this.
-
-			//SonicCalibration();
-
-			Drive();
-
-			CurrentLift = m_encoder->GetDistance();
-			Lift();
-			Lifting();
+			started = true
+			//Counter variable declaration
+		m_encoder->Reset();
+		working();
 		}
+
+
     }
 
+	void working()
+	{
+				/*
+		Ultrasonic code
+		*/
+		//Trying to calculate the ultrasonic sensor value in mm
+		distToWall = (m_Ultrasonic->GetValue()/ultraCal);
+
+		/*
+		Solenoid Control Declaration
+		*/
+		//m_solenoidOne.Set(m_stick.GetRawButton(bottomTopLeft));
+		//m_solenoidTwo.Set(m_stick.GetRawButton(bottomTopRight));
+
+		/*
+		Debugging
+		*/
+
+		//Joystick HAT testing
+		//SmartDashboard::PutNumber("POV test",  m_stick.GetPOV());
+
+		//SmartDashboard::PutNumber("POV count test",  m_stick.GetPOVCount());
+		//Raw Counter Info
+		SmartDashboard::PutNumber("Encoder Ticks", m_encoder->Get());
+
+		//Processed Counter info
+		SmartDashboard::PutNumber("Distance", m_encoder->GetDistance());
+
+		//Processed Ultrasonic info
+		SmartDashboard::PutNumber("Distance to wall", distToWall);
+
+		SmartDashboard::PutBoolean("Limit switch top", m_topLimit->Get());
+		SmartDashboard::PutBoolean("Limit switch bottom", m_bottomLimit->Get());
+		SmartDashboard::PutBoolean("Limit switch climb", m_climbLimit->Get());
+		SmartDashboard::PutBoolean("navX drive", navxD);
+		SmartDashboard::PutBoolean("navX drive (Really)", navxDR);
+		/*
+		Seperate Functions for organization and simplicity (Declared below)
+		*/
+		NavX();
+
+		Tilt();
+
+		Grab();
+
+		//Spin(); //If we need to test the lift with a simple up/down button architecture, re-enable this.
+
+		//SonicCalibration();
+
+		Drive();
+
+		CurrentLift = m_encoder->GetDistance();
+		Lift();
+		Lifting();
+		
+	}
 	//navX code
 	void NavX()
 	{
@@ -474,7 +490,6 @@ public:
 
 			m_lift.Set(-.37);
 		} 
-
 		SmartDashboard::PutNumber("Target:", target);
 		SmartDashboard::PutBoolean("Lift Up", ifup);
 		SmartDashboard::PutBoolean("Lift Down", ifdown);
