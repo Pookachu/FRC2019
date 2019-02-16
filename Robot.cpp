@@ -75,7 +75,7 @@ private:
 	static constexpr int Lpos5 = 300;
 	static constexpr int Lpos6 = 360;
 
-	static constexpr double hover = -0.12;
+	static constexpr double hover = 0.12;
 	int CurrentLift;
 
 	//Joystick declaration
@@ -253,8 +253,9 @@ public:
 
 			Drive();
 
-			CurrentLift = fabs(m_encoder->GetDistance());
-				Lift();
+			CurrentLift = m_encoder->GetDistance();
+
+			Lift();
 		}
     }
 
@@ -354,7 +355,7 @@ public:
 			{
 				LiftTo(i);
 			}
-
+		SmartDashboard::PutBoolean("CheckButton",checkButton(i));
 		}
 		
 	/*	if(m_stick.GetRawButton(11) && m_stick.GetRawButton(12))
@@ -412,9 +413,13 @@ public:
 	}
 
 	void LiftTo(int button)
-	{
-		double target = 0;
+	{		
+		bool ifhover = false;
+		bool ifup = false;
+		bool ifdown = false;
 		
+		double target = 0;
+
 		switch (button)
 		{
 			case 7:
@@ -439,24 +444,41 @@ public:
 			target = 0;
 				break;
 		}
+
 		//up
 		if (CurrentLift < target && m_topLimit->Get() )
 		{
-			m_lift.Set(.25);
-			if( (CurrentLift < target+3) && (CurrentLift > target-3) )
-			{
-				m_lift.Set(hover);
-			}
+		
+			ifup = true;
+			ifdown = false;
+			ifhover = false;
+
+			m_lift.Set(.37);
 		}
+
 		//down
-		if (CurrentLift > target && (! (m_bottomLimit->Get() )))
+		else if (CurrentLift > target && (! (m_bottomLimit->Get() )))
 		{
-			m_lift.Set(-.25);
-			if( (CurrentLift < target+3) && (CurrentLift > target-3) )
+			ifup = false;
+			ifdown = true;
+			ifhover = false;
+
+			m_lift.Set(-.37);
+		} 
+
+		//within target
+		else if( (CurrentLift < target+5) && (CurrentLift > target-5) )
 			{
+				ifup = false;
+				ifdown = false;
+				ifhover = true;
+
 				m_lift.Set(hover);
 			}
-		} 
+		SmartDashboard::PutNumber("Target:", target);
+		SmartDashboard::PutBoolean("Lift Up", ifup);
+		SmartDashboard::PutBoolean("Lift Down", ifdown);
+		SmartDashboard::PutBoolean("Lift Hover", ifhover);
 	}
 
 	//DEPRECATED
