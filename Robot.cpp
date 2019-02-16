@@ -64,6 +64,20 @@ private:
 	static constexpr int CanTwo = 2;
 	static constexpr int CanThree = 3;
 
+
+	//Static lift positon "variables"
+	//ball heights
+	static constexpr int Lpos1 = 105;
+	static constexpr int Lpos2 = 260;
+	static constexpr int Lpos3 = 420;
+	//panel heights
+	static constexpr int Lpos4 = 180;
+	static constexpr int Lpos5 = 300;
+	static constexpr int Lpos6 = 360;
+
+	static constexpr double hover = -0.12;
+	int CurrentLift;
+
 	//Joystick declaration
 	frc::Joystick m_stick{0};
 
@@ -107,7 +121,7 @@ private:
 	/*ai = new AnalogInput(0);*/
 
 	//Counter init
-	Encoder *m_encoder = new Encoder(0,1, false, Encoder::EncodingType::k4X);
+	Encoder *m_encoder = new Encoder(0,1, true, Encoder::EncodingType::k4X);
 
 	//Limit switch init
 	DigitalInput *m_topLimit = new DigitalInput(3);
@@ -118,13 +132,13 @@ private:
 	//Timer init
  	frc::Timer m_timer;
 
+
 	//LiveWindow init
 	//frc::LiveWindow& m_lw = *frc::LiveWindow::GetInstance();
 public:
 	//Ultrasonic calculation variables
 	double ultraCal = 3.25;
 	double distToWall;
-
 	//counter variables
 //	double diameter = 6/12; // 6 inch wheels
 	double dist =0.5*3.14/1024;  // ft per pulse
@@ -170,18 +184,20 @@ public:
 	}
 	void AutonomousPeriodic() override
 	{
-		
-	}
-
-	//TELEOP FUNCTIONS
-	void TeleopInit() override
-	{
+		if(m_bottomLimit->Get())
+		{
+			m_lift.Set(.3);
+		}
+		else
+		{
+			m_encoder->Reset();
+		}
 	}
 
 	void TeleopPeriodic() override
 	{
 		//Counter variable declaration
-
+		m_encoder->Reset();
 		//Main While Loop
 		while(frc::RobotBase::IsEnabled() && frc::RobotBase::IsOperatorControl())
 		{
@@ -196,19 +212,16 @@ public:
 			*/
 			//m_solenoidOne.Set(m_stick.GetRawButton(bottomTopLeft));
 			//m_solenoidTwo.Set(m_stick.GetRawButton(bottomTopRight));
-			
-			/*
-			Counter code
-			*/
 
 			/*
 			Debugging
 			*/
+
 			//Joystick HAT testing
 			//SmartDashboard::PutNumber("POV test",  m_stick.GetPOV());
 
 			//SmartDashboard::PutNumber("POV count test",  m_stick.GetPOVCount());
-			m_servo->Set(((m_stick.GetThrottle()+1)/2));
+			//m_lift.Set(m_stick.GetThrottle()/2);
 
 			SmartDashboard::PutNumber("Drive Throttle", m_stick.GetThrottle());
 			//Raw Counter Info
@@ -228,21 +241,22 @@ public:
 			/*
 			Seperate Functions for organization and simplicity (Declared below)
 			*/
+			NavX();
 
 			Tilt();
+
 			Grab();
-			Spin(); //If we need to test the lift with a simple up/down button architecture, re-enable this.
-			SonicCalibration();
+
+			//Spin(); //If we need to test the lift with a simple up/down button architecture, re-enable this.
+
+			//SonicCalibration();
+
 			Drive();
-			//Lift();
+
+			CurrentLift = fabs(m_encoder->GetDistance());
+				Lift();
 		}
     }
-
-	//TEST FUNCTION (for if we ever need to do anything to test specifically I guess)
-	void TestPeriodic() override
-	{
-
-	}
 
 	//navX code
 	void NavX()
@@ -254,6 +268,7 @@ public:
 			m_ahrs->ZeroYaw();
 		} 
 	}
+
 	//Drive code
 	void Drive()
 	{
@@ -282,21 +297,21 @@ public:
 				navxDR = 0;
 			}
 	}
+
 	//Ultra Sonic Calibration Function Declaration
 	void SonicCalibration() 
 	{	
-		if(m_stick.GetRawButton(6)) 
+		if(m_stick.GetRawButton(9)) 
 		{
 			ultraCal = ultraCal +.01;
 		}
 
-		if(m_stick.GetRawButton(4)) 
+		if(m_stick.GetRawButton(7)) 
 		{
 			ultraCal = ultraCal -.01;
 		}
 	}
 
-	//Lift control code (Spin but PID implementation)
 	void Grab()
 	{
 		if(m_stick.GetRawButton(6))
@@ -312,13 +327,14 @@ public:
 			m_grab.Set(0);
 		}
 	}
+
 	void Tilt()
 	{
-		if(m_stick.GetRawButton(8))
+		if(m_stick.GetRawButton(5))
 		{
 			m_tilt.Set(.5);
 		}
-		else if(m_stick.GetRawButton(10))
+		else if(m_stick.GetRawButton(3))
 		{
 			m_tilt.Set(-.5);
 		}
@@ -328,16 +344,119 @@ public:
 		}
 	}
 
+	//Lift control code (Spin but with predefined positions and with encoder implementation)
 	void Lift()
 	{
-		/*switch (m_stick::GetPOV())
-		{
-			case:
-				break;
 		
-			default:
+		for(int i = 7; i <= 12; i++)
+		{
+			if(checkButton(i))
+			{
+				LiftTo(i);
+			}
+
+		}
+		
+	/*	if(m_stick.GetRawButton(11) && m_stick.GetRawButton(12))
+		{
+			if(m_bottomLimit->Get())
+			{
+				m_lift.Set(-.2);
+			}
+			else
+			{
+				m_lift.Set(0);
+			}
+		}
+		else if(m_stick.GetRawButton(7))
+		{
+			LiftTo(Lpos1);
+		}
+		else if(m_stick.GetRawButton(8))
+		{
+			LiftTo(Lpos2);
+		}		
+		else if(m_stick.GetRawButton(9))
+		{
+			LiftTo(Lpos3);
+		}		
+		else if(m_stick.GetRawButton(10))
+		{
+			LiftTo(Lpos4);
+		}		
+		else if(m_stick.GetRawButton(11))
+		{
+			LiftTo(Lpos5);
+		}		
+		else if(m_stick.GetRawButton(12))
+		{
+			LiftTo(Lpos6);
+		}	*/
+	//	else 
+	//	{
+		//	m_lift.Set(hover);
+	//	}
+	}
+
+
+	bool checkButton(int buttonNumber)
+	{
+		if(m_stick.GetRawButton(buttonNumber))
+		{
+			return true;
+		}
+		else
+		{
+			return false;
+		}
+	}
+
+	void LiftTo(int button)
+	{
+		double target = 0;
+		
+		switch (button)
+		{
+			case 7:
+				target = Lpos4;
 				break;
-		} */
+			case 8:
+				target = Lpos1;
+				break;
+			case 9:
+				target = Lpos5;
+				break;
+			case 10:
+				target = Lpos2;
+				break;
+			case 11:
+				target = Lpos6;
+				break;
+			case 12:
+				target = Lpos3;
+				break;
+			default:
+			target = 0;
+				break;
+		}
+		//up
+		if (CurrentLift < target && m_topLimit->Get() )
+		{
+			m_lift.Set(.25);
+			if( (CurrentLift < target+3) && (CurrentLift > target-3) )
+			{
+				m_lift.Set(hover);
+			}
+		}
+		//down
+		if (CurrentLift > target && (! (m_bottomLimit->Get() )))
+		{
+			m_lift.Set(-.25);
+			if( (CurrentLift < target+3) && (CurrentLift > target-3) )
+			{
+				m_lift.Set(hover);
+			}
+		} 
 	}
 
 	//DEPRECATED
@@ -369,7 +488,7 @@ public:
 
 			//DOWN
 			//if 5 but not 3 and bottom limit not pressed
-			if( (m_stick.GetRawButton(3) ) && ( ! ( m_stick.GetRawButton(5) ) ) &&  ( m_topLimit->Get() ) )
+			if( (m_stick.GetRawButton(3) ) && ( ! ( m_stick.GetRawButton(5) ) ) &&  ( m_bottomLimit->Get() ) )
 			{
 
 				m_lift.Set(.5);
