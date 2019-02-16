@@ -76,7 +76,7 @@ private:
 	static constexpr int Lpos6 = 360;
 
 	static constexpr double hover = 0.12;
-	int CurrentLift;
+	double CurrentLift;
 
 	//Joystick declaration
 	frc::Joystick m_stick{0};
@@ -146,6 +146,7 @@ public:
 	bool navxD = 0;
 	bool navxDR;
 
+	double target = 0;
 	//Robot init function
 	void RobotInit() override
   	{	  	
@@ -254,8 +255,8 @@ public:
 			Drive();
 
 			CurrentLift = m_encoder->GetDistance();
-
 			Lift();
+			Lifting();
 		}
     }
 
@@ -414,12 +415,6 @@ public:
 
 	void LiftTo(int button)
 	{		
-		bool ifhover = false;
-		bool ifup = false;
-		bool ifdown = false;
-		
-		double target = 0;
-
 		switch (button)
 		{
 			case 7:
@@ -444,9 +439,23 @@ public:
 			target = 0;
 				break;
 		}
+	}
+	void Lifting()
+	{
+		bool ifhover = false;
+		bool ifup = false;
+		bool ifdown = false;
+		//within target
+		if( (CurrentLift < target+5) && (CurrentLift > target-5) )
+			{
+				ifup = false;
+				ifdown = false;
+				ifhover = true;
 
+				m_lift.Set(hover);
+			}
 		//up
-		if (CurrentLift < target && m_topLimit->Get() )
+		else if (CurrentLift < target && m_topLimit->Get() )
 		{
 		
 			ifup = true;
@@ -466,15 +475,6 @@ public:
 			m_lift.Set(-.37);
 		} 
 
-		//within target
-		else if( (CurrentLift < target+5) && (CurrentLift > target-5) )
-			{
-				ifup = false;
-				ifdown = false;
-				ifhover = true;
-
-				m_lift.Set(hover);
-			}
 		SmartDashboard::PutNumber("Target:", target);
 		SmartDashboard::PutBoolean("Lift Up", ifup);
 		SmartDashboard::PutBoolean("Lift Down", ifdown);
