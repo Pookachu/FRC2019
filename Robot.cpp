@@ -69,13 +69,13 @@ private:
 	//ball heights
 	static constexpr int Lpos1 = 105;
 	static constexpr int Lpos2 = 260;
-	static constexpr int Lpos3 = 420;
+	static constexpr int Lpos3 = 410;
 	//panel heights
-	static constexpr int Lpos4 = 180;
+	static constexpr int Lpos4 = 58;
 	static constexpr int Lpos5 = 300;
 	static constexpr int Lpos6 = 360;
 
-	static constexpr double hover = 0.12;
+	static constexpr double hover = 0.05;
 	double CurrentLift;
 
 	//Joystick declaration
@@ -95,8 +95,8 @@ private:
 	frc::MecanumDrive m_drive{m_frontLeft, m_rearLeft, m_frontRight, m_rearRight};
 
 	//Solenoid declaration (CAN)
-	//frc::Solenoid m_solenoidOne{CanZero};
-	//frc::Solenoid m_solenoidTwo{CanOne};
+	frc::Solenoid m_solenoidOne{CanZero};
+	frc::Solenoid m_solenoidTwo{CanOne};
 
 	//Other motor definitions
 	//Lift
@@ -146,6 +146,7 @@ public:
 	bool navxD = 0;
 	bool navxDR;
 
+	bool liftreset = 0;
 	double target = 0;
 	//Robot init function
 	bool started = 0;
@@ -187,11 +188,11 @@ public:
 	}
 	void AutonomousPeriodic() override
 	{
-		if(m_time.Get() <=2)
+		if(m_timer.Get() <=2)
 		{
-			if(m_bottomLimit->Get())
+			if(!(m_bottomLimit->Get()))
 			{
-				m_lift.Set(.3);
+				m_lift.Set(0);
 			}
 			else
 			{
@@ -211,16 +212,16 @@ public:
 		//Init once (Pragma haha)
 		if(started==false)
 		{
-			started = true
+			started = true;
 			//Counter variable declaration
 		m_encoder->Reset();
-		working();
 		}
 
+		Working();
 
     }
 
-	void working()
+	void Working()
 	{
 				/*
 		Ultrasonic code
@@ -256,6 +257,7 @@ public:
 		SmartDashboard::PutBoolean("Limit switch climb", m_climbLimit->Get());
 		SmartDashboard::PutBoolean("navX drive", navxD);
 		SmartDashboard::PutBoolean("navX drive (Really)", navxDR);
+		SmartDashboard::PutBoolean("Lift Reset", liftreset);
 		/*
 		Seperate Functions for organization and simplicity (Declared below)
 		*/
@@ -272,8 +274,22 @@ public:
 		Drive();
 
 		CurrentLift = m_encoder->GetDistance();
+
+		if( ( ! ( m_stick.GetRawButton(1) ) ) )
+		{
 		Lift();
 		Lifting();
+		liftreset = 0;
+		}
+		else
+		{
+			m_lift.Set(m_stick.GetThrottle());
+			liftreset = 1;
+			if( m_bottomLimit->Get() )
+			{
+				m_encoder->Reset();
+			}
+		}
 		
 	}
 	//navX code
@@ -302,18 +318,18 @@ public:
 				}
 			}
 
-			if(navxD == 1) 
-			{
-				//Driving with Mecanum (Field oriented with NavX)
-				m_drive.DriveCartesian(m_stick.GetX(), (m_stick.GetY()), m_stick.GetZ(), m_ahrs->GetAngle());
-				navxDR = 1;
-			}
-			else
-			{
-				//Driving with Mecanum (Robot oriented)
-				m_drive.DriveCartesian(m_stick.GetX(), ((m_stick.GetY())*-1), m_stick.GetZ());
-				navxDR = 0;
-			}
+		if(navxD == 1) 
+		{
+			//Driving with Mecanum (Field oriented with NavX)
+			m_drive.DriveCartesian(m_stick.GetX(), (m_stick.GetY()), m_stick.GetZ(), m_ahrs->GetAngle());
+			navxDR = 1;
+		}
+		else
+		{
+			//Driving with Mecanum (Robot oriented)
+			m_drive.DriveCartesian(m_stick.GetX(), ((m_stick.GetY())*-1), m_stick.GetZ());
+			navxDR = 0;
+		}
 	}
 
 	//Ultra Sonic Calibration Function Declaration
@@ -434,22 +450,22 @@ public:
 		switch (button)
 		{
 			case 7:
-				target = Lpos4;
+				target = Lpos3;
 				break;
 			case 8:
-				target = Lpos1;
-				break;
-			case 9:
-				target = Lpos5;
-				break;
-			case 10:
-				target = Lpos2;
-				break;
-			case 11:
 				target = Lpos6;
 				break;
+			case 9:
+				target = Lpos2;
+				break;
+			case 10:
+				target = Lpos5;
+				break;
+			case 11:
+				target = Lpos1;
+				break;
 			case 12:
-				target = Lpos3;
+				target = Lpos4;
 				break;
 			default:
 			target = 0;
@@ -458,25 +474,39 @@ public:
 	}
 	void Lifting()
 	{
-		bool ifhover = false;
-		bool ifup = false;
-		bool ifdown = false;
+		//Debug values
+		bool ifHover = false;
+		bool ifUp = false;
+		bool ifDown = false;
+		bool ifBottom = false;
+
 		//within target
 		if( (CurrentLift < target+5) && (CurrentLift > target-5) )
 			{
-				ifup = false;
-				ifdown = false;
-				ifhover = true;
+				ifUp = false;
+				ifDown = false;
+				ifHover = true;
+				ifBottom
 
 				m_lift.Set(hover);
 			}
+		// Bottom (special case)
+		else if (target == 0 && (!(m_bottomLimit->Get()) // We want to go to the bottom but are not currently there
+		{
+
+			ifUp = false;
+			ifDown = true;
+			ifHover = false;
+
+			m_lift.Set(0);
+		}
 		//up
 		else if (CurrentLift < target && m_topLimit->Get() )
 		{
 		
-			ifup = true;
-			ifdown = false;
-			ifhover = false;
+			ifUp = true;
+			ifDown = false;
+			ifHover = false;
 
 			m_lift.Set(.37);
 		}
@@ -484,15 +514,15 @@ public:
 		//down
 		else if (CurrentLift > target && (! (m_bottomLimit->Get() )))
 		{
-			ifup = false;
-			ifdown = true;
-			ifhover = false;
+			ifUp = false;
+			ifDown = true;
+			ifHover = false;
 
 			m_lift.Set(-.37);
 		} 
 		SmartDashboard::PutNumber("Target:", target);
-		SmartDashboard::PutBoolean("Lift Up", ifup);
-		SmartDashboard::PutBoolean("Lift Down", ifdown);
+		SmartDashboard::PutBoolean("Lift Up", ifUp);
+		SmartDashboard::PutBoolean("Lift Down", ifDown);
 		SmartDashboard::PutBoolean("Lift Hover", ifhover);
 	}
 
@@ -512,13 +542,11 @@ public:
 			//if 3 but not 5 and top limit not pressed
 			if( (m_stick.GetRawButton(5) ) && ( ! ( m_stick.GetRawButton(3) ) ) && ( m_topLimit->Get() ) )
 			{
-
 				m_lift.Set(-.5);
 				liftUp = 1;
 			}
 			else
 			{
-
 				m_lift.Set(0);
 				liftUp = 0;
 			}
@@ -527,13 +555,11 @@ public:
 			//if 5 but not 3 and bottom limit not pressed
 			if( (m_stick.GetRawButton(3) ) && ( ! ( m_stick.GetRawButton(5) ) ) &&  ( m_bottomLimit->Get() ) )
 			{
-
 				m_lift.Set(.5);
 				liftDown = 1;
 			}
 			else
 			{
-
 				m_lift.Set(0);
 				liftDown = 0;
 			}
