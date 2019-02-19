@@ -69,11 +69,11 @@ private:
 	//ball heights
 	static constexpr int Lpos1 = 105;
 	static constexpr int Lpos2 = 260;
-	static constexpr int Lpos3 = 410;
+	static constexpr int Lpos3 = 370;
 	//panel heights
-	static constexpr int Lpos4 = 58;
-	static constexpr int Lpos5 = 300;
-	static constexpr int Lpos6 = 360;
+	static constexpr int Lpos4 = 60;
+	static constexpr int Lpos5 = 230;
+	static constexpr int Lpos6 = 365;
 
 	static constexpr double hover = 0.05;
 	double CurrentLift;
@@ -113,7 +113,7 @@ private:
 
 	//Sensor definitions
 	//Ultrasonic initialization
-	AnalogInput *m_Ultrasonic = new AnalogInput(AnalogZero);
+	//AnalogInput *m_Ultrasonic = new AnalogInput(AnalogZero);
 
 	//Gyroscope initialization
 	AHRS  *m_ahrs = new AHRS(SPI::Port::kMXP);
@@ -137,8 +137,8 @@ private:
 	//frc::LiveWindow& m_lw = *frc::LiveWindow::GetInstance();
 public:
 	//Ultrasonic calculation variables
-	double ultraCal = 3.25;
-	double distToWall;
+	//double ultraCal = 3.25;
+	//double distToWall;
 	//counter variables
 //	double diameter = 6/12; // 6 inch wheels
 	double dist =0.5*3.14/1024;  // ft per pulse
@@ -149,6 +149,9 @@ public:
 	double target = 0;
 	//Robot init function
 	bool started = 0;
+
+	bool AdjustUp;
+	bool AdjustDown;
 
 	void RobotInit() override
   	{	  	
@@ -202,9 +205,7 @@ public:
 		{
 			Working();
 		}
-
 	}
-
 
 	void TeleopPeriodic() override
 	{
@@ -213,7 +214,8 @@ public:
 		{
 			started = true;
 			//Counter variable declaration
-		m_encoder->Reset();
+			target = 0;
+			m_encoder->Reset();
 		}
 
 		Working();
@@ -222,12 +224,14 @@ public:
 
 	void Working()
 	{
-				/*
+		//DEPRECATED
+		/*
 		Ultrasonic code
 		*/
 		//Trying to calculate the ultrasonic sensor value in mm
-		distToWall = (m_Ultrasonic->GetValue()/ultraCal);
+		//distToWall = (m_Ultrasonic->GetValue()/ultraCal);
 
+		//DISABLED TEMPORARILY
 		/*
 		Solenoid Control Declaration
 		*/
@@ -237,11 +241,9 @@ public:
 		/*
 		Debugging
 		*/
-
 		//Joystick HAT testing
-		//SmartDashboard::PutNumber("POV test",  m_stick.GetPOV());
+		SmartDashboard::PutNumber("POV test",  m_stick.GetPOV());
 
-		//SmartDashboard::PutNumber("POV count test",  m_stick.GetPOVCount());
 		//Raw Counter Info
 		SmartDashboard::PutNumber("Encoder Ticks", m_encoder->Get());
 
@@ -249,7 +251,7 @@ public:
 		SmartDashboard::PutNumber("Distance", m_encoder->GetDistance());
 
 		//Processed Ultrasonic info
-		SmartDashboard::PutNumber("Distance to wall", distToWall);
+		//SmartDashboard::PutNumber("Distance to wall", distToWall);
 
 		SmartDashboard::PutBoolean("Limit switch top", m_topLimit->Get());
 		SmartDashboard::PutBoolean("Limit switch bottom", m_bottomLimit->Get());
@@ -272,13 +274,15 @@ public:
 
 		CurrentLift = m_encoder->GetDistance();
 
-		Lift();
-		Lifting();
-		liftAdjust();
+		LiftButtonGet();
+		LiftMovementLogic();
+		LiftManualAdjust();
 		
 	}
-	//navX code
-	void NavX()
+
+	//DEPRECATED
+	//navX Reset Function
+	void NavXReset()
 	{
 		//Gyroscope reset
 		bool reset_yaw_button_pressed = m_stick.GetRawButton(1);
@@ -290,33 +294,38 @@ public:
 
 	void Drive()
 	{
-		//toggle
+		//Assign variables for Joystick axii
 		double driveX = m_stick.GetX();
 		double driveY = m_stick.GetY();
 		double driveZ = m_stick.GetZ();
+		//Set deadzone
 		double deadZone = 0.1;
 		double magnitude = sqrt(driveX * driveX + driveY * driveY);
 
 		driveX /= magnitude;
 		driveY /= magnitude;
 
-		if(magnitude < deadZone) {
+		if(magnitude < deadZone) 
+		{
 			magnitude = 0; //no movement in deadzone radius
-		} else {
+		} 
+		else 
+		{
 			magnitude -= deadZone; //no discontinuity
 		}
 
 		driveX *= magnitude; //scale each amount
 		driveY *= magnitude;
 
-		m_drive.Drive_Cartesian(
-		m_stick.GetThrottle() * driveX,
+		m_drive.DriveCartesian(
+		m_stick.GetThrottle() * (driveX*-1), //reversed
 		m_stick.GetThrottle() * driveY,
 		m_stick.GetThrottle() * -driveZ);
 	}
 
+	//DEPRECATED
 	//Ultra Sonic Calibration Function Declaration
-	void SonicCalibration() 
+/*	void SonicCalibration() 
 	{	
 		if(m_stick.GetRawButton(9)) 
 		{
@@ -327,10 +336,11 @@ public:
 		{
 			ultraCal = ultraCal -.01;
 		}
-	}
+	}*/
 
 	void Grab()
 	{
+		//Basic control scheme
 		if(m_stick.GetRawButton(6))
 		{
 			m_grab.Set(.5);
@@ -347,6 +357,7 @@ public:
 
 	void Tilt()
 	{
+		//Basic control scheme
 		if(m_stick.GetRawButton(5))
 		{
 			m_tilt.Set(.5);
@@ -361,30 +372,35 @@ public:
 		}
 	}
 
-	//Lift control code (Spin but with predefined positions and with encoder implementation)
-	void Lift()
+	// Fetch and give LiftTargetControl button pressed info
+	void LiftButtonGet()
 	{
 		
 		for(int i = 7; i <= 13; i++)
 		{
+			//This is a really dumb way to check the 2 button as well as 7-12
 			if(i == 13)
 			{
 				i = 2;
 			}
-			if(checkButton(i))
+			//Main part of this function, checks buttons 2, and 7-12 to see if they're on and sends if they are to 
+			if(CheckButton(i))
 			{
-				LiftTo(i);
+				LiftTargetControl(i);
 			}
+			//Set it back to not screw up the for loop
 			if(i == 2)
 			{
 				i = 13;
 			}
-		SmartDashboard::PutBoolean("CheckButton",checkButton(i));
+		SmartDashboard::PutBoolean("CheckButton",CheckButton(i));
 		}
 	}
 
-	bool checkButton(int buttonNumber)
+	// Checking to see if a specific button is pressed to be able to implement a for loop
+	bool CheckButton(int buttonNumber)
 	{
+		// Fetching state for button number
 		if(m_stick.GetRawButton(buttonNumber))
 		{
 			return true;
@@ -395,8 +411,10 @@ public:
 		}
 	}
 
-	void LiftTo(int button)
-	{		
+	// Sets the target variable depending on which button was pressed
+	void LiftTargetControl(int button)
+	{
+		// Assign button value to target
 		switch (button)
 		{
 			case 7:
@@ -422,16 +440,19 @@ public:
 				break;
 		}
 	}
-	void Lifting()
+
+	//The real control for where the lift is and where it should be
+	void LiftMovementLogic()
 	{
-		//Debug values
+		// Debug variables
 		bool ifHover = false;
 		bool ifUp = false;
 		bool ifDown = false;
 		bool ifBottom = false;
 
 		// Bottom (special case)
-		 if (target == 0 && (!(m_bottomLimit->Get() ) ) ) // We want to go to the bottom but are not currently there
+		// We want to go to the bottom but are not currently there
+		 if (target == 0 && (!(m_bottomLimit->Get() ) ) )
 		{
 			ifUp = false;
 			ifDown = true;
@@ -440,7 +461,8 @@ public:
 
 			m_lift.Set(0);
 		}
-		//within target
+		// Hover 
+		// if within 5 of target value, hover
 		else if( (CurrentLift < target+5) && (CurrentLift > target-5) )
 			{
 				ifUp = false;
@@ -450,8 +472,9 @@ public:
 
 				m_lift.Set(hover);
 			}
-		//up
-		else if (CurrentLift < target && m_topLimit->Get() )
+		// Up
+		// If where the lift is is lower than the target, go up
+		else if (CurrentLift < target && m_topLimit->Get() ) 
 		{
 		
 			ifUp = true;
@@ -461,7 +484,8 @@ public:
 			m_lift.Set(.37);
 		}
 
-		//down
+		// Down
+		// If where the lift is is higher than the target, go down
 		else if (CurrentLift > target && (! (m_bottomLimit->Get() )))
 		{
 			ifUp = false;
@@ -469,37 +493,42 @@ public:
 			ifHover = false;
 			ifBottom = false;
 
-			m_lift.Set(-.37);
+			m_lift.Set(-.2);
 		} 
+		// Encoder reset when we hit the bottom of the lift
+		if(m_bottomLimit->Get() == true)
+		{
+			m_encoder->Reset();
+		}
 		SmartDashboard::PutNumber("Target:", target);
 		SmartDashboard::PutBoolean("Lift Up", ifUp);
 		SmartDashboard::PutBoolean("Lift Down", ifDown);
 		SmartDashboard::PutBoolean("Lift Hover", ifHover);
+		SmartDashboard::PutNumber("Lift Rate", m_encoder->GetRate());
 	}
 
-	void liftAdjust()
+	//Manual adjustments with the POV (Joystick hat)
+	void LiftManualAdjust()
 	{
-		bool AdjustUp;
-		bool AdjustDown;
-		//up
+		// Target + 5 if POV is up
 		if(m_stick.GetPOV() == 0 && AdjustUp == false)
 		{
-			target = target + 3;
+			target = target + 5;
 			AdjustUp = true;
 			AdjustDown = false;
 		}
-		//middle
+		// POV middle resets other two to be able to be pressed again
 		if(m_stick.GetPOV() == -1)
 		{
 			AdjustUp = false;
 			AdjustDown = false;
 		}
-		//down
+		// Target - 5 if POV is down
 		if(m_stick.GetPOV() == 180 && AdjustDown == false)
 		{
 			AdjustUp = false;
 			AdjustDown = true;
-						target = target - 3;
+			target = target - 5;
 		}
 	}
 
@@ -510,13 +539,13 @@ public:
 	    cs::UsbCamera camera = frc::CameraServer::GetInstance()->StartAutomaticCapture();
 
 	    // Set the resolution
-	    camera.SetResolution(640, 480);
+	    camera.SetResolution(320, 240);
 
 	    // Get a CvSink. This will capture Mats from the Camera
 	    cs::CvSink cvSink = frc::CameraServer::GetInstance()->GetVideo();
 
 	    // Setup a CvSource. This will send images back to the Dashboard
-	    cs::CvSource outputStream = frc::CameraServer::GetInstance()->PutVideo("Rectangle", 640, 480);
+	     cs::CvSource outputStream = frc::CameraServer::GetInstance()->PutVideo("Rectangle", 640, 480);
 
 	    // Mats are very memory expensive. Lets reuse this Mat.
 	    cv::Mat mat;
@@ -538,7 +567,7 @@ public:
     		rectangle(mat, cv::Point(100, 100), cv::Point(400, 400), cv::Scalar(255, 255, 255), 5);
     		// Give the output stream a new image to display
     		outputStream.PutFrame(mat);
-    	}
+    	} 
 	}
 	#endif
 };
