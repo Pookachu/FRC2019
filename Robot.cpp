@@ -146,7 +146,6 @@ public:
 	bool navxD = 0;
 	bool navxDR;
 
-	bool liftreset = 0;
 	double target = 0;
 	//Robot init function
 	bool started = 0;
@@ -257,11 +256,9 @@ public:
 		SmartDashboard::PutBoolean("Limit switch climb", m_climbLimit->Get());
 		SmartDashboard::PutBoolean("navX drive", navxD);
 		SmartDashboard::PutBoolean("navX drive (Really)", navxDR);
-		SmartDashboard::PutBoolean("Lift Reset", liftreset);
 		/*
 		Seperate Functions for organization and simplicity (Declared below)
 		*/
-		NavX();
 
 		Tilt();
 
@@ -275,21 +272,9 @@ public:
 
 		CurrentLift = m_encoder->GetDistance();
 
-		if( ( ! ( m_stick.GetRawButton(1) ) ) )
-		{
 		Lift();
 		Lifting();
-		liftreset = 0;
-		}
-		else
-		{
-			m_lift.Set(m_stick.GetThrottle());
-			liftreset = 1;
-			if( m_bottomLimit->Get() )
-			{
-				m_encoder->Reset();
-			}
-		}
+		liftAdjust();
 		
 	}
 	//navX code
@@ -303,33 +288,31 @@ public:
 		} 
 	}
 
-	//Drive code
 	void Drive()
 	{
-		if(m_stick.GetRawButton(2))
-			{
-				if(navxD == 1)
-				{
-					navxD = 0;
-				}
-				else
-				{
-					navxD = 1;
-				}
-			}
+		//toggle
+		double driveX = m_stick.GetX();
+		double driveY = m_stick.GetY();
+		double driveZ = m_stick.GetZ();
+		double deadZone = 0.1;
+		double magnitude = sqrt(driveX * driveX + driveY * driveY);
 
-		if(navxD == 1) 
-		{
-			//Driving with Mecanum (Field oriented with NavX)
-			m_drive.DriveCartesian(m_stick.GetX(), (m_stick.GetY()), m_stick.GetZ(), m_ahrs->GetAngle());
-			navxDR = 1;
+		driveX /= magnitude;
+		driveY /= magnitude;
+
+		if(magnitude < deadZone) {
+			magnitude = 0; //no movement in deadzone radius
+		} else {
+			magnitude -= deadZone; //no discontinuity
 		}
-		else
-		{
-			//Driving with Mecanum (Robot oriented)
-			m_drive.DriveCartesian(m_stick.GetX(), ((m_stick.GetY())*-1), m_stick.GetZ());
-			navxDR = 0;
-		}
+
+		driveX *= magnitude; //scale each amount
+		driveY *= magnitude;
+
+		m_drive.Drive_Cartesian(
+		m_stick.GetThrottle() * driveX,
+		m_stick.GetThrottle() * driveY,
+		m_stick.GetThrottle() * -driveZ);
 	}
 
 	//Ultra Sonic Calibration Function Declaration
@@ -382,56 +365,23 @@ public:
 	void Lift()
 	{
 		
-		for(int i = 7; i <= 12; i++)
+		for(int i = 7; i <= 13; i++)
 		{
+			if(i == 13)
+			{
+				i = 2;
+			}
 			if(checkButton(i))
 			{
 				LiftTo(i);
 			}
+			if(i == 2)
+			{
+				i = 13;
+			}
 		SmartDashboard::PutBoolean("CheckButton",checkButton(i));
 		}
-		
-	/*	if(m_stick.GetRawButton(11) && m_stick.GetRawButton(12))
-		{
-			if(m_bottomLimit->Get())
-			{
-				m_lift.Set(-.2);
-			}
-			else
-			{
-				m_lift.Set(0);
-			}
-		}
-		else if(m_stick.GetRawButton(7))
-		{
-			LiftTo(Lpos1);
-		}
-		else if(m_stick.GetRawButton(8))
-		{
-			LiftTo(Lpos2);
-		}		
-		else if(m_stick.GetRawButton(9))
-		{
-			LiftTo(Lpos3);
-		}		
-		else if(m_stick.GetRawButton(10))
-		{
-			LiftTo(Lpos4);
-		}		
-		else if(m_stick.GetRawButton(11))
-		{
-			LiftTo(Lpos5);
-		}		
-		else if(m_stick.GetRawButton(12))
-		{
-			LiftTo(Lpos6);
-		}	*/
-	//	else 
-	//	{
-		//	m_lift.Set(hover);
-	//	}
 	}
-
 
 	bool checkButton(int buttonNumber)
 	{
@@ -480,26 +430,26 @@ public:
 		bool ifDown = false;
 		bool ifBottom = false;
 
+		// Bottom (special case)
+		 if (target == 0 && (!(m_bottomLimit->Get() ) ) ) // We want to go to the bottom but are not currently there
+		{
+			ifUp = false;
+			ifDown = true;
+			ifHover = false;
+			ifBottom = true;
+
+			m_lift.Set(0);
+		}
 		//within target
-		if( (CurrentLift < target+5) && (CurrentLift > target-5) )
+		else if( (CurrentLift < target+5) && (CurrentLift > target-5) )
 			{
 				ifUp = false;
 				ifDown = false;
 				ifHover = true;
-				ifBottom
+				ifBottom = false;
 
 				m_lift.Set(hover);
 			}
-		// Bottom (special case)
-		else if (target == 0 && (!(m_bottomLimit->Get()) // We want to go to the bottom but are not currently there
-		{
-
-			ifUp = false;
-			ifDown = true;
-			ifHover = false;
-
-			m_lift.Set(0);
-		}
 		//up
 		else if (CurrentLift < target && m_topLimit->Get() )
 		{
@@ -507,7 +457,7 @@ public:
 			ifUp = true;
 			ifDown = false;
 			ifHover = false;
-
+			ifBottom = false;
 			m_lift.Set(.37);
 		}
 
@@ -517,64 +467,40 @@ public:
 			ifUp = false;
 			ifDown = true;
 			ifHover = false;
+			ifBottom = false;
 
 			m_lift.Set(-.37);
 		} 
 		SmartDashboard::PutNumber("Target:", target);
 		SmartDashboard::PutBoolean("Lift Up", ifUp);
 		SmartDashboard::PutBoolean("Lift Down", ifDown);
-		SmartDashboard::PutBoolean("Lift Hover", ifhover);
+		SmartDashboard::PutBoolean("Lift Hover", ifHover);
 	}
 
-	//DEPRECATED
-	//Lift Motor spinng logic/control declaration
-	void Spin() 
+	void liftAdjust()
 	{
-		bool liftZero;
-		bool liftUp;
-		bool liftDown;
-		//if either button
-		if( ( m_stick.GetRawButton(3) ) || ( m_stick.GetRawButton(5) ) )
+		bool AdjustUp;
+		bool AdjustDown;
+		//up
+		if(m_stick.GetPOV() == 0 && AdjustUp == false)
 		{
-			liftZero = 0;
-
-			//UP
-			//if 3 but not 5 and top limit not pressed
-			if( (m_stick.GetRawButton(5) ) && ( ! ( m_stick.GetRawButton(3) ) ) && ( m_topLimit->Get() ) )
-			{
-				m_lift.Set(-.5);
-				liftUp = 1;
-			}
-			else
-			{
-				m_lift.Set(0);
-				liftUp = 0;
-			}
-
-			//DOWN
-			//if 5 but not 3 and bottom limit not pressed
-			if( (m_stick.GetRawButton(3) ) && ( ! ( m_stick.GetRawButton(5) ) ) &&  ( m_bottomLimit->Get() ) )
-			{
-				m_lift.Set(.5);
-				liftDown = 1;
-			}
-			else
-			{
-				m_lift.Set(0);
-				liftDown = 0;
-			}
-		
+			target = target + 3;
+			AdjustUp = true;
+			AdjustDown = false;
 		}
-		else
+		//middle
+		if(m_stick.GetPOV() == -1)
 		{
-
-			m_lift.Set(0);
-			liftZero = 1;
+			AdjustUp = false;
+			AdjustDown = false;
 		}
-		SmartDashboard::PutNumber("Servo Angel", m_servo->GetAngle());
-		SmartDashboard::PutBoolean("Lift Set zero", liftZero);
-		SmartDashboard::PutBoolean("Lift Set up", liftUp);
-		SmartDashboard::PutBoolean("Lift Set down", liftDown);
+		//down
+		if(m_stick.GetPOV() == 180 && AdjustDown == false)
+		{
+			AdjustUp = false;
+			AdjustDown = true;
+						target = target - 3;
+		}
 	}
 
 	//VisionThread Declaration
