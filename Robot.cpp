@@ -134,44 +134,39 @@ class Robot : public frc::TimedRobot
 	//LiveWindow init
 	//frc::LiveWindow& m_lw = *frc::LiveWindow::GetInstance();
   public:
-	//Ultrasonic calculation variables
-	//double ultraCal = 3.25;
-	//double distToWall;
-	//counter variables
-	//	double diameter = 6/12; // 6 inch wheels
-	double dist = 0.5 * 3.14 / 1024; // ft per pulse
+		//Robot init function
+		bool started = 0;
 
-	bool navxD = 0;
-	bool navxDR;
+		// Encoder variables
+		double dist = 0.5 * 3.14 / 1024; // ft per pulse
 
-	double target = 0;
-	//Robot init function
-	bool started = 0;
+		// Lift Variables
+		double target = 0;
+		//Manual lift
+		bool AdjustUp;
+		bool AdjustDown;
+		//Smooth lift
+		double LiftSmoothSpeedUp = .1;
+		double LiftSmoothSpeedDown = 0;
+		double LiftMiddle = 0;
 
-	double LiftSmoothSpeedUp = .1;
-	double LiftSmoothSpeedDown = 0;
-	bool AdjustUp;
-	bool AdjustDown;
+		void RobotInit() override
+		{
+			//Start the timer
+			m_timer.Start();
 
-	double LiftMiddle = 0;
+			//Counter settings
+			m_encoder->SetDistancePerPulse(dist);
 
-	void RobotInit() override
-	{
-		//Start the timer
-		m_timer.Start();
+			/*
+			Safeties
+			*/
+			m_drive.SetSafetyEnabled(false);
+			//drive expiration? check later
+			m_drive.SetExpiration(0.1);
 
-		//Counter settings
-		m_encoder->SetDistancePerPulse(dist);
-
-		/*
-		Safeties
-		*/
-		m_drive.SetSafetyEnabled(false);
-		//drive expiration? check later
-		m_drive.SetExpiration(0.1);
-
-		//Start VisionThread in a seperate thread
-		/*#if defined(__linux__)
+			//Start VisionThread in a seperate thread
+			/*#if defined(__linux__)
     	std::thread visionThread(VisionThread);
 		visionThread.detach();
 	#else
@@ -266,8 +261,6 @@ class Robot : public frc::TimedRobot
 		Tilt();
 
 		Grab();
-
-		//Spin(); //If we need to test the lift with a simple up/down button architecture, re-enable this.
 
 		//SonicCalibration();
 
@@ -464,6 +457,7 @@ class Robot : public frc::TimedRobot
 			LiftSmoothSpeedDown = 0;
 			m_lift.Set(0);
 		}
+
 		// Hover
 		// if within 5 of target value, hover
 		else if ((CurrentLift < target + 5) && (CurrentLift > target - 5))
@@ -477,6 +471,7 @@ class Robot : public frc::TimedRobot
 			LiftSmoothSpeedDown = 0;
 			m_lift.Set(hover);
 		}
+
 		// Up
 		// If where the lift is is lower than the target, go up
 		else if (CurrentLift < target && m_topLimit->Get())
@@ -503,11 +498,13 @@ class Robot : public frc::TimedRobot
 			LiftSmoothMovement(false);
 			m_lift.Set(LiftSmoothSpeedDown);
 		}
+
 		// Encoder reset when we hit the bottom of the lift
 		if (m_bottomLimit->Get() == true)
 		{
 			m_encoder->Reset();
 		}
+		//Throw it all up on the dashboard
 		SmartDashboard::PutNumber("Target:", target);
 		SmartDashboard::PutBoolean("Lift Up", ifUp);
 		SmartDashboard::PutBoolean("Lift Down", ifDown);
@@ -540,13 +537,15 @@ class Robot : public frc::TimedRobot
 		}
 	}
 
+	//Smooth lift function
 	void LiftSmoothMovement(bool Direction)
 	{
-		double MaxSpeedUp = .7;
-		double MinSpeedUp = .2;
-		double MaxSpeedDown = -.3;
+		double MaxSpeedUp = .9;
+		double MinSpeedUp = .25;
+		double MaxSpeedDown = -.4;
 		double MinSpeedDown = 0;
-		//up
+
+		// UP
 		if(Direction)
 		{
 			//if where we on the lift is lower than between the start position of the lift and the target, and it hasn't hit the max up speed, increment.
@@ -557,11 +556,12 @@ class Robot : public frc::TimedRobot
 			//if where we on the lift is higher than between the start position of the lift and the target, and it hasn't hit the max up speed, drecrement.
 			else if((CurrentLift > LiftMiddle) && LiftSmoothSpeedUp > MinSpeedUp)
 			{
-				LiftSmoothSpeedUp = LiftSmoothSpeedUp - .02;
+				LiftSmoothSpeedUp = LiftSmoothSpeedUp - .01;
 			}
 			return;
 		}
-		//down
+
+		// DOWN
 		else
 		{
 			//if where we on the lift is higher than between the start position of the lift and the target, and it hasn't hit the max up speed, decrement.
@@ -572,7 +572,7 @@ class Robot : public frc::TimedRobot
 			//if where we on the lift is lower than between the start position of the lift and the target, and it hasn't hit the max up speed, increment.
 			else if((CurrentLift < LiftMiddle) && LiftSmoothSpeedDown > MinSpeedDown)
 			{
-				LiftSmoothSpeedDown = LiftSmoothSpeedDown + .02;
+				LiftSmoothSpeedDown = LiftSmoothSpeedDown + .01;
 			}
 		}
 	}
