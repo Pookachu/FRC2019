@@ -15,10 +15,10 @@
 #include <AHRSProtocol.h>
 #include <frc/WPILib.h>
 
-class Robot : public frc::TimedRobot 
+class Robot : public frc::TimedRobot
 {
 #if defined(__linux__)
-private:
+  private:
 	//Static PI declaration
 	static constexpr double PI = 3.14159265359;
 
@@ -56,14 +56,13 @@ private:
 	static constexpr int RelayZero = 0;
 	static constexpr int RelayOne = 1;
 	static constexpr int RelayTwo = 2;
-	static constexpr int RelayThree =3;
+	static constexpr int RelayThree = 3;
 
 	//Static Can port declarations
 	static constexpr int CanZero = 0;
 	static constexpr int CanOne = 1;
 	static constexpr int CanTwo = 2;
 	static constexpr int CanThree = 3;
-
 
 	//Static lift positon "variables"
 	//ball heights
@@ -103,8 +102,8 @@ private:
 	frc::PWMVictorSPX m_lift{PWMFour};
 
 	//Tilt
-	frc::Spark m_tilt {PWMFive};
-	
+	frc::Spark m_tilt{PWMFive};
+
 	//Grab
 	frc::Spark m_grab{PWMSix};
 
@@ -116,12 +115,12 @@ private:
 	//AnalogInput *m_Ultrasonic = new AnalogInput(AnalogZero);
 
 	//Gyroscope initialization
-	AHRS  *m_ahrs = new AHRS(SPI::Port::kMXP);
+	AHRS *m_ahrs = new AHRS(SPI::Port::kMXP);
 
 	/*ai = new AnalogInput(0);*/
 
 	//Counter init
-	Encoder *m_encoder = new Encoder(0,1, true, Encoder::EncodingType::k4X);
+	Encoder *m_encoder = new Encoder(0, 1, true, Encoder::EncodingType::k4X);
 
 	//Limit switch init
 	DigitalInput *m_topLimit = new DigitalInput(3);
@@ -130,18 +129,17 @@ private:
 
 	//Misc Declarations
 	//Timer init
- 	frc::Timer m_timer;
-
+	frc::Timer m_timer;
 
 	//LiveWindow init
 	//frc::LiveWindow& m_lw = *frc::LiveWindow::GetInstance();
-public:
+  public:
 	//Ultrasonic calculation variables
 	//double ultraCal = 3.25;
 	//double distToWall;
 	//counter variables
-//	double diameter = 6/12; // 6 inch wheels
-	double dist =0.5*3.14/1024;  // ft per pulse
+	//	double diameter = 6/12; // 6 inch wheels
+	double dist = 0.5 * 3.14 / 1024; // ft per pulse
 
 	bool navxD = 0;
 	bool navxDR;
@@ -150,11 +148,15 @@ public:
 	//Robot init function
 	bool started = 0;
 
+	double LiftSmoothSpeedUp = .1;
+	double LiftSmoothSpeedDown = 0;
 	bool AdjustUp;
 	bool AdjustDown;
 
+	double LiftMiddle = 0;
+
 	void RobotInit() override
-  	{	  	
+	{
 		//Start the timer
 		m_timer.Start();
 
@@ -168,37 +170,37 @@ public:
 		//drive expiration? check later
 		m_drive.SetExpiration(0.1);
 
-	//Start VisionThread in a seperate thread
-	#if defined(__linux__)
+		//Start VisionThread in a seperate thread
+		/*#if defined(__linux__)
     	std::thread visionThread(VisionThread);
 		visionThread.detach();
 	#else
 		wpi::errs() << "Vision only available on Linux.\n";
 		wpi::errs().flush();
-	#endif
+	#endif  */
 	}
 
 	//AUTONOMOUS FUNCTIONS
 	void AutonomousInit() override
 	{
-		//Timer resets before we start autonomous 
+		//Timer resets before we start autonomous
 		m_timer.Reset();
-    	m_timer.Start();
+		m_timer.Start();
 
 		//Encoder resets before we start autonomous
 		m_encoder->Reset();
 	}
 	void AutonomousPeriodic() override
 	{
-		if(m_timer.Get() <=2)
+		if (m_timer.Get() <= 2)
 		{
-			if(!(m_bottomLimit->Get()))
+			if (!(m_bottomLimit->Get()))
 			{
 				m_lift.Set(0);
 			}
 			else
 			{
-			m_encoder->Reset();
+				m_encoder->Reset();
 			}
 		}
 		else
@@ -210,7 +212,7 @@ public:
 	void TeleopPeriodic() override
 	{
 		//Init once (Pragma haha)
-		if(started==false)
+		if (started == false)
 		{
 			started = true;
 			//Counter variable declaration
@@ -219,8 +221,7 @@ public:
 		}
 
 		Working();
-
-    }
+	}
 
 	void Working()
 	{
@@ -235,14 +236,14 @@ public:
 		/*
 		Solenoid Control Declaration
 		*/
-		//m_solenoidOne.Set(m_stick.GetRawButton(bottomTopLeft));
-		//m_solenoidTwo.Set(m_stick.GetRawButton(bottomTopRight));
+		m_solenoidOne.Set(m_stick.GetRawButton(1));
+		m_solenoidTwo.Set(m_stick.GetRawButton(1));
 
 		/*
 		Debugging
 		*/
 		//Joystick HAT testing
-		SmartDashboard::PutNumber("POV test",  m_stick.GetPOV());
+		SmartDashboard::PutNumber("POV test", m_stick.GetPOV());
 
 		//Raw Counter Info
 		SmartDashboard::PutNumber("Encoder Ticks", m_encoder->Get());
@@ -277,7 +278,6 @@ public:
 		LiftButtonGet();
 		LiftMovementLogic();
 		LiftManualAdjust();
-		
 	}
 
 	//DEPRECATED
@@ -286,10 +286,10 @@ public:
 	{
 		//Gyroscope reset
 		bool reset_yaw_button_pressed = m_stick.GetRawButton(1);
-		if ( reset_yaw_button_pressed ) 
+		if (reset_yaw_button_pressed)
 		{
 			m_ahrs->ZeroYaw();
-		} 
+		}
 	}
 
 	void Drive()
@@ -305,11 +305,11 @@ public:
 		driveX /= magnitude;
 		driveY /= magnitude;
 
-		if(magnitude < deadZone) 
+		if (magnitude < deadZone)
 		{
 			magnitude = 0; //no movement in deadzone radius
-		} 
-		else 
+		}
+		else
 		{
 			magnitude -= deadZone; //no discontinuity
 		}
@@ -318,14 +318,14 @@ public:
 		driveY *= magnitude;
 
 		m_drive.DriveCartesian(
-		m_stick.GetThrottle() * (driveX*-1), //reversed
-		m_stick.GetThrottle() * driveY,
-		m_stick.GetThrottle() * -driveZ);
+			m_stick.GetThrottle() * (driveX*-1), //reversed
+			m_stick.GetThrottle() * driveY,
+			m_stick.GetThrottle() * -driveZ);
 	}
 
 	//DEPRECATED
 	//Ultra Sonic Calibration Function Declaration
-/*	void SonicCalibration() 
+	/*	void SonicCalibration() 
 	{	
 		if(m_stick.GetRawButton(9)) 
 		{
@@ -341,11 +341,11 @@ public:
 	void Grab()
 	{
 		//Basic control scheme
-		if(m_stick.GetRawButton(6))
+		if (m_stick.GetRawButton(6))
 		{
 			m_grab.Set(.5);
 		}
-		else if(m_stick.GetRawButton(4))
+		else if (m_stick.GetRawButton(4))
 		{
 			m_grab.Set(-.5);
 		}
@@ -358,11 +358,11 @@ public:
 	void Tilt()
 	{
 		//Basic control scheme
-		if(m_stick.GetRawButton(5))
+		if (m_stick.GetRawButton(5))
 		{
 			m_tilt.Set(.5);
 		}
-		else if(m_stick.GetRawButton(3))
+		else if (m_stick.GetRawButton(3))
 		{
 			m_tilt.Set(-.5);
 		}
@@ -375,25 +375,25 @@ public:
 	// Fetch and give LiftTargetControl button pressed info
 	void LiftButtonGet()
 	{
-		
-		for(int i = 7; i <= 13; i++)
+
+		for (int i = 7; i <= 13; i++)
 		{
 			//This is a really dumb way to check the 2 button as well as 7-12
-			if(i == 13)
+			if (i == 13)
 			{
 				i = 2;
 			}
-			//Main part of this function, checks buttons 2, and 7-12 to see if they're on and sends if they are to 
-			if(CheckButton(i))
+			//Main part of this function, checks buttons 2, and 7-12 to see if they're on and sends if they are to
+			if (CheckButton(i))
 			{
 				LiftTargetControl(i);
 			}
 			//Set it back to not screw up the for loop
-			if(i == 2)
+			if (i == 2)
 			{
 				i = 13;
 			}
-		SmartDashboard::PutBoolean("CheckButton",CheckButton(i));
+			SmartDashboard::PutBoolean("CheckButton", CheckButton(i));
 		}
 	}
 
@@ -401,7 +401,7 @@ public:
 	bool CheckButton(int buttonNumber)
 	{
 		// Fetching state for button number
-		if(m_stick.GetRawButton(buttonNumber))
+		if (m_stick.GetRawButton(buttonNumber))
 		{
 			return true;
 		}
@@ -417,28 +417,29 @@ public:
 		// Assign button value to target
 		switch (button)
 		{
-			case 7:
-				target = Lpos3;
-				break;
-			case 8:
-				target = Lpos6;
-				break;
-			case 9:
-				target = Lpos2;
-				break;
-			case 10:
-				target = Lpos5;
-				break;
-			case 11:
-				target = Lpos1;
-				break;
-			case 12:
-				target = Lpos4;
-				break;
-			default:
+		case 7:
+			target = Lpos3;
+			break;
+		case 8:
+			target = Lpos6;
+			break;
+		case 9:
+			target = Lpos2;
+			break;
+		case 10:
+			target = Lpos5;
+			break;
+		case 11:
+			target = Lpos1;
+			break;
+		case 12:
+			target = Lpos4;
+			break;
+		default:
 			target = 0;
-				break;
+			break;
 		}
+		LiftMiddle = (CurrentLift+target)/2;
 	}
 
 	//The real control for where the lift is and where it should be
@@ -452,51 +453,58 @@ public:
 
 		// Bottom (special case)
 		// We want to go to the bottom but are not currently there
-		 if (target == 0 && (!(m_bottomLimit->Get() ) ) )
+		if (target == 0 && (!(m_bottomLimit->Get())))
 		{
 			ifUp = false;
 			ifDown = true;
 			ifHover = false;
 			ifBottom = true;
 
+			LiftSmoothSpeedUp = .1;
+			LiftSmoothSpeedDown = 0;
 			m_lift.Set(0);
 		}
-		// Hover 
+		// Hover
 		// if within 5 of target value, hover
-		else if( (CurrentLift < target+5) && (CurrentLift > target-5) )
-			{
-				ifUp = false;
-				ifDown = false;
-				ifHover = true;
-				ifBottom = false;
+		else if ((CurrentLift < target + 5) && (CurrentLift > target - 5))
+		{
+			ifUp = false;
+			ifDown = false;
+			ifHover = true;
+			ifBottom = false;
 
-				m_lift.Set(hover);
-			}
+			LiftSmoothSpeedUp = .1;
+			LiftSmoothSpeedDown = 0;
+			m_lift.Set(hover);
+		}
 		// Up
 		// If where the lift is is lower than the target, go up
-		else if (CurrentLift < target && m_topLimit->Get() ) 
+		else if (CurrentLift < target && m_topLimit->Get())
 		{
-		
+
 			ifUp = true;
 			ifDown = false;
 			ifHover = false;
 			ifBottom = false;
-			m_lift.Set(.37);
+
+			LiftSmoothMovement(true);
+			m_lift.Set(LiftSmoothSpeedUp);
 		}
 
 		// Down
 		// If where the lift is is higher than the target, go down
-		else if (CurrentLift > target && (! (m_bottomLimit->Get() )))
+		else if (CurrentLift > target && (!(m_bottomLimit->Get())))
 		{
 			ifUp = false;
 			ifDown = true;
 			ifHover = false;
 			ifBottom = false;
 
-			m_lift.Set(-.2);
-		} 
+			LiftSmoothMovement(false);
+			m_lift.Set(LiftSmoothSpeedDown);
+		}
 		// Encoder reset when we hit the bottom of the lift
-		if(m_bottomLimit->Get() == true)
+		if (m_bottomLimit->Get() == true)
 		{
 			m_encoder->Reset();
 		}
@@ -511,20 +519,20 @@ public:
 	void LiftManualAdjust()
 	{
 		// Target + 5 if POV is up
-		if(m_stick.GetPOV() == 0 && AdjustUp == false)
+		if (m_stick.GetPOV() == 0 && AdjustUp == false)
 		{
 			target = target + 5;
 			AdjustUp = true;
 			AdjustDown = false;
 		}
 		// POV middle resets other two to be able to be pressed again
-		if(m_stick.GetPOV() == -1)
+		if (m_stick.GetPOV() == -1)
 		{
 			AdjustUp = false;
 			AdjustDown = false;
 		}
 		// Target - 5 if POV is down
-		if(m_stick.GetPOV() == 180 && AdjustDown == false)
+		if (m_stick.GetPOV() == 180 && AdjustDown == false)
 		{
 			AdjustUp = false;
 			AdjustDown = true;
@@ -532,8 +540,45 @@ public:
 		}
 	}
 
+	void LiftSmoothMovement(bool Direction)
+	{
+		double MaxSpeedUp = .7;
+		double MinSpeedUp = .2;
+		double MaxSpeedDown = -.3;
+		double MinSpeedDown = 0;
+		//up
+		if(Direction)
+		{
+			//if where we on the lift is lower than between the start position of the lift and the target, and it hasn't hit the max up speed, increment.
+			if((CurrentLift < LiftMiddle) && LiftSmoothSpeedUp < MaxSpeedUp)
+			{
+				LiftSmoothSpeedUp = LiftSmoothSpeedUp + .02;
+			}
+			//if where we on the lift is higher than between the start position of the lift and the target, and it hasn't hit the max up speed, drecrement.
+			else if((CurrentLift > LiftMiddle) && LiftSmoothSpeedUp > MinSpeedUp)
+			{
+				LiftSmoothSpeedUp = LiftSmoothSpeedUp - .02;
+			}
+			return;
+		}
+		//down
+		else
+		{
+			//if where we on the lift is higher than between the start position of the lift and the target, and it hasn't hit the max up speed, decrement.
+			if((CurrentLift > LiftMiddle) && LiftSmoothSpeedDown < MaxSpeedDown)
+			{
+				LiftSmoothSpeedDown = LiftSmoothSpeedDown - .02;
+			}
+			//if where we on the lift is lower than between the start position of the lift and the target, and it hasn't hit the max up speed, increment.
+			else if((CurrentLift < LiftMiddle) && LiftSmoothSpeedDown > MinSpeedDown)
+			{
+				LiftSmoothSpeedDown = LiftSmoothSpeedDown + .02;
+			}
+		}
+	}
+
 	//VisionThread Declaration
-	static void VisionThread()
+	/*	static void VisionThread()
 	{
 	    // Get the USB camera from CameraServer
 	    cs::UsbCamera camera = frc::CameraServer::GetInstance()->StartAutomaticCapture();
@@ -568,12 +613,12 @@ public:
     		// Give the output stream a new image to display
     		outputStream.PutFrame(mat);
     	} 
-	}
-	#endif
+	} */
+#endif
 };
 #ifndef RUNNING_FRC_TESTS
-int main() 
+int main()
 {
-	 return frc::StartRobot<Robot>(); 
+	return frc::StartRobot<Robot>();
 }
 #endif
