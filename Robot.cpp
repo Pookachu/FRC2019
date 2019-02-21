@@ -23,56 +23,57 @@ class Robot : public frc::TimedRobot
 	static constexpr double PI = 3.14159265359;
 
 	//Static PWM port declarations
-	static constexpr int PWMZero = 0;
-	static constexpr int PWMOne = 1;
-	static constexpr int PWMTwo = 2;
-	static constexpr int PWMThree = 3;
-	static constexpr int PWMFour = 4;
-	static constexpr int PWMFive = 5;
-	static constexpr int PWMSix = 6;
-	static constexpr int PWMSeven = 7;
-	static constexpr int PWMEight = 8;
-	static constexpr int PWMNine = 9;
+	static constexpr int 
+	PWMZero = 0,
+	PWMOne = 1,
+	PWMTwo = 2,
+	PWMThree = 3,
+	PWMFour = 4,
+	PWMFive = 5,
+	PWMSix = 6,
+	PWMSeven = 7,
+	PWMEight = 8,
+	PWMNine = 9,
 
 	//Static DIO port declarations
-	static constexpr int DIOZero = 0;
-	static constexpr int DIOOne = 1;
-	static constexpr int DIOTwo = 2;
-	static constexpr int DIOThree = 3;
-	static constexpr int DIOFour = 4;
-	static constexpr int DIOFive = 5;
-	static constexpr int DIOSix = 6;
-	static constexpr int DIOSeven = 7;
-	static constexpr int DIOEight = 8;
-	static constexpr int DIONine = 9;
+	DIOZero = 0,
+	DIOOne = 1,
+	DIOTwo = 2,
+	DIOThree = 3,
+	DIOFour = 4,
+	DIOFive = 5,
+	DIOSix = 6,
+	DIOSeven = 7,
+	DIOEight = 8,
+	DIONine = 9,
 
 	//Static Analog port declarations
-	static constexpr int AnalogZero = 0;
-	static constexpr int AnalogOne = 1;
-	static constexpr double AnalogTwo = 2;
-	static constexpr double AnalogThree = 3;
+	AnalogZero = 0,
+	AnalogOne = 1,
+	AnalogTwo = 2,
+	AnalogThree = 3,
 
 	//Static Relay port declarations
-	static constexpr int RelayZero = 0;
-	static constexpr int RelayOne = 1;
-	static constexpr int RelayTwo = 2;
-	static constexpr int RelayThree = 3;
+	RelayZero = 0,
+	RelayOne = 1,
+	RelayTwo = 2,
+	RelayThree = 3,
 
 	//Static Can port declarations
-	static constexpr int CanZero = 0;
-	static constexpr int CanOne = 1;
-	static constexpr int CanTwo = 2;
-	static constexpr int CanThree = 3;
+	CanZero = 0,
+	CanOne = 1,
+	CanTwo = 2,
+	CanThree = 3,
 
 	//Static lift positon "variables"
 	//ball heights
-	static constexpr int Lpos1 = 105;
-	static constexpr int Lpos2 = 260;
-	static constexpr int Lpos3 = 370;
+	Lpos1 = 120,
+	Lpos2 = 275,
+	Lpos3 = 370,
 	//panel heights
-	static constexpr int Lpos4 = 60;
-	static constexpr int Lpos5 = 230;
-	static constexpr int Lpos6 = 365;
+	Lpos4 = 60,
+	Lpos5 = 230,
+	Lpos6 = 365;
 
 	static constexpr double hover = 0.05;
 	double CurrentLift;
@@ -94,8 +95,8 @@ class Robot : public frc::TimedRobot
 	frc::MecanumDrive m_drive{m_frontLeft, m_rearLeft, m_frontRight, m_rearRight};
 
 	//Solenoid declaration (CAN)
-	frc::Solenoid m_solenoidOne{CanZero};
-	frc::Solenoid m_solenoidTwo{CanOne};
+	frc::Solenoid m_solenoidOne{4};
+	frc::Solenoid m_solenoidTwo{7};
 
 	//Other motor definitions
 	//Lift
@@ -134,45 +135,47 @@ class Robot : public frc::TimedRobot
 	//LiveWindow init
 	//frc::LiveWindow& m_lw = *frc::LiveWindow::GetInstance();
   public:
-		//Robot init function
-		bool started = 0;
+	//Ultrasonic calculation variables
+	//double ultraCal = 3.25;
+	//double distToWall;
+	//counter variables
+	//	double diameter = 6/12; // 6 inch wheels
+	double dist = 0.5 * 3.14 / 1024; // ft per pulse
 
-		// Encoder variables
-		double dist = 0.5 * 3.14 / 1024; // ft per pulse
+	double target = 0;
+	//Robot init function
+	bool started = 0;
 
-		// Lift Variables
-		double target = 0;
-		//Manual lift
-		bool AdjustUp;
-		bool AdjustDown;
-		//Smooth lift
-		double LiftSmoothSpeedUp = .1;
-		double LiftSmoothSpeedDown = 0;
-		double LiftMiddle = 0;
+	double LiftSmoothSpeedUp = .1;
+	double LiftSmoothSpeedDown = 0;
+	bool AdjustUp;
+	bool AdjustDown;
 
-		void RobotInit() override
-		{
-			//Start the timer
-			m_timer.Start();
+	double LiftMiddle = 0;
 
-			//Counter settings
-			m_encoder->SetDistancePerPulse(dist);
+	void RobotInit() override
+	{
+		//Start the timer
+		m_timer.Start();
 
-			/*
-			Safeties
-			*/
-			m_drive.SetSafetyEnabled(false);
-			//drive expiration? check later
-			m_drive.SetExpiration(0.1);
+		//Counter settings
+		m_encoder->SetDistancePerPulse(dist);
 
-			//Start VisionThread in a seperate thread
-			/*#if defined(__linux__)
+		/*
+		Safeties
+		*/
+		m_drive.SetSafetyEnabled(false);
+		//drive expiration? check later
+		m_drive.SetExpiration(0.1);
+
+		//Start VisionThread in a seperate thread
+		#if defined(__linux__)
     	std::thread visionThread(VisionThread);
 		visionThread.detach();
 	#else
 		wpi::errs() << "Vision only available on Linux.\n";
 		wpi::errs().flush();
-	#endif  */
+	#endif
 	}
 
 	//AUTONOMOUS FUNCTIONS
@@ -214,10 +217,15 @@ class Robot : public frc::TimedRobot
 			target = 0;
 			m_encoder->Reset();
 		}
-
+		m_solenoidOne.Set(m_stick.GetRawButton(1));
+		m_solenoidTwo.Set(m_stick.GetRawButton(1));
 		Working();
 	}
 
+	void DisabledInit() override
+	{
+		target = 0;
+	}
 	void Working()
 	{
 		//DEPRECATED
@@ -231,8 +239,6 @@ class Robot : public frc::TimedRobot
 		/*
 		Solenoid Control Declaration
 		*/
-		m_solenoidOne.Set(m_stick.GetRawButton(1));
-		m_solenoidTwo.Set(m_stick.GetRawButton(1));
 
 		/*
 		Debugging
@@ -252,19 +258,16 @@ class Robot : public frc::TimedRobot
 		SmartDashboard::PutBoolean("Limit switch top", m_topLimit->Get());
 		SmartDashboard::PutBoolean("Limit switch bottom", m_bottomLimit->Get());
 		SmartDashboard::PutBoolean("Limit switch climb", m_climbLimit->Get());
-		SmartDashboard::PutBoolean("navX drive", navxD);
-		SmartDashboard::PutBoolean("navX drive (Really)", navxDR);
 		/*
 		Seperate Functions for organization and simplicity (Declared below)
 		*/
+		Drive();
 
 		Tilt();
 
 		Grab();
 
 		//SonicCalibration();
-
-		Drive();
 
 		CurrentLift = m_encoder->GetDistance();
 
@@ -275,7 +278,7 @@ class Robot : public frc::TimedRobot
 
 	//DEPRECATED
 	//navX Reset Function
-	void NavXReset()
+	/*	void NavXReset()
 	{
 		//Gyroscope reset
 		bool reset_yaw_button_pressed = m_stick.GetRawButton(1);
@@ -283,7 +286,7 @@ class Robot : public frc::TimedRobot
 		{
 			m_ahrs->ZeroYaw();
 		}
-	}
+	} */
 
 	void Drive()
 	{
@@ -291,6 +294,7 @@ class Robot : public frc::TimedRobot
 		double driveX = m_stick.GetX();
 		double driveY = m_stick.GetY();
 		double driveZ = m_stick.GetZ();
+		double driveThrottle = (((m_stick.GetThrottle()+1)/2)*-1);
 		//Set deadzone
 		double deadZone = 0.1;
 		double magnitude = sqrt(driveX * driveX + driveY * driveY);
@@ -311,9 +315,9 @@ class Robot : public frc::TimedRobot
 		driveY *= magnitude;
 
 		m_drive.DriveCartesian(
-			m_stick.GetThrottle() * (driveX*-1), //reversed
-			m_stick.GetThrottle() * driveY,
-			m_stick.GetThrottle() * -driveZ);
+				driveThrottle * (driveX * -1), //reversed
+				driveThrottle * driveY,
+				driveThrottle * -driveZ);
 	}
 
 	//DEPRECATED
@@ -337,10 +341,12 @@ class Robot : public frc::TimedRobot
 		if (m_stick.GetRawButton(6))
 		{
 			m_grab.Set(.5);
+			return;
 		}
 		else if (m_stick.GetRawButton(4))
 		{
 			m_grab.Set(-.5);
+			return;
 		}
 		else
 		{
@@ -353,11 +359,13 @@ class Robot : public frc::TimedRobot
 		//Basic control scheme
 		if (m_stick.GetRawButton(5))
 		{
-			m_tilt.Set(.5);
+			m_tilt.Set(.8);
+			return;
 		}
 		else if (m_stick.GetRawButton(3))
 		{
 			m_tilt.Set(-.5);
+			return;
 		}
 		else
 		{
@@ -432,7 +440,7 @@ class Robot : public frc::TimedRobot
 			target = 0;
 			break;
 		}
-		LiftMiddle = (CurrentLift+target)/2;
+		LiftMiddle = (CurrentLift + target) / 2;
 	}
 
 	//The real control for where the lift is and where it should be
@@ -457,7 +465,6 @@ class Robot : public frc::TimedRobot
 			LiftSmoothSpeedDown = 0;
 			m_lift.Set(0);
 		}
-
 		// Hover
 		// if within 5 of target value, hover
 		else if ((CurrentLift < target + 5) && (CurrentLift > target - 5))
@@ -471,7 +478,6 @@ class Robot : public frc::TimedRobot
 			LiftSmoothSpeedDown = 0;
 			m_lift.Set(hover);
 		}
-
 		// Up
 		// If where the lift is is lower than the target, go up
 		else if (CurrentLift < target && m_topLimit->Get())
@@ -498,13 +504,11 @@ class Robot : public frc::TimedRobot
 			LiftSmoothMovement(false);
 			m_lift.Set(LiftSmoothSpeedDown);
 		}
-
 		// Encoder reset when we hit the bottom of the lift
 		if (m_bottomLimit->Get() == true)
 		{
 			m_encoder->Reset();
 		}
-		//Throw it all up on the dashboard
 		SmartDashboard::PutNumber("Target:", target);
 		SmartDashboard::PutBoolean("Lift Up", ifUp);
 		SmartDashboard::PutBoolean("Lift Down", ifDown);
@@ -519,66 +523,68 @@ class Robot : public frc::TimedRobot
 		if (m_stick.GetPOV() == 0 && AdjustUp == false)
 		{
 			target = target + 5;
+			LiftMiddle = (CurrentLift + target) / 2;
 			AdjustUp = true;
 			AdjustDown = false;
+			return;
 		}
 		// POV middle resets other two to be able to be pressed again
 		if (m_stick.GetPOV() == -1)
 		{
 			AdjustUp = false;
 			AdjustDown = false;
+			return;
 		}
 		// Target - 5 if POV is down
 		if (m_stick.GetPOV() == 180 && AdjustDown == false)
 		{
+			target = target - 5;
+			LiftMiddle = (CurrentLift + target) * .75 ;
 			AdjustUp = false;
 			AdjustDown = true;
-			target = target - 5;
 		}
 	}
 
-	//Smooth lift function
 	void LiftSmoothMovement(bool Direction)
 	{
-		double MaxSpeedUp = .9;
-		double MinSpeedUp = .25;
-		double MaxSpeedDown = -.4;
+		double MaxSpeedUp = .8;
+		double MinSpeedUp = .27;
+		double MaxSpeedDown = -.3;
 		double MinSpeedDown = 0;
-
-		// UP
-		if(Direction)
+		//up
+		if (Direction)
 		{
 			//if where we on the lift is lower than between the start position of the lift and the target, and it hasn't hit the max up speed, increment.
-			if((CurrentLift < LiftMiddle) && LiftSmoothSpeedUp < MaxSpeedUp)
+			if ((CurrentLift < LiftMiddle) && LiftSmoothSpeedUp < MaxSpeedUp)
 			{
 				LiftSmoothSpeedUp = LiftSmoothSpeedUp + .02;
+				return;
 			}
 			//if where we on the lift is higher than between the start position of the lift and the target, and it hasn't hit the max up speed, drecrement.
-			else if((CurrentLift > LiftMiddle) && LiftSmoothSpeedUp > MinSpeedUp)
+			else if ((CurrentLift > LiftMiddle) && LiftSmoothSpeedUp > MinSpeedUp)
 			{
-				LiftSmoothSpeedUp = LiftSmoothSpeedUp - .01;
+				LiftSmoothSpeedUp = LiftSmoothSpeedUp - .02;
 			}
-			return;
 		}
-
-		// DOWN
+		//down
 		else
 		{
 			//if where we on the lift is higher than between the start position of the lift and the target, and it hasn't hit the max up speed, decrement.
-			if((CurrentLift > LiftMiddle) && LiftSmoothSpeedDown < MaxSpeedDown)
+			if ((CurrentLift > LiftMiddle) && LiftSmoothSpeedDown < MaxSpeedDown)
 			{
 				LiftSmoothSpeedDown = LiftSmoothSpeedDown - .02;
+				return;
 			}
 			//if where we on the lift is lower than between the start position of the lift and the target, and it hasn't hit the max up speed, increment.
-			else if((CurrentLift < LiftMiddle) && LiftSmoothSpeedDown > MinSpeedDown)
+			else if ((CurrentLift < LiftMiddle) && LiftSmoothSpeedDown > MinSpeedDown)
 			{
-				LiftSmoothSpeedDown = LiftSmoothSpeedDown + .01;
+				LiftSmoothSpeedDown = LiftSmoothSpeedDown + .02;
 			}
 		}
 	}
 
 	//VisionThread Declaration
-	/*	static void VisionThread()
+		static void VisionThread()
 	{
 	    // Get the USB camera from CameraServer
 	    cs::UsbCamera camera = frc::CameraServer::GetInstance()->StartAutomaticCapture();
@@ -613,7 +619,7 @@ class Robot : public frc::TimedRobot
     		// Give the output stream a new image to display
     		outputStream.PutFrame(mat);
     	} 
-	} */
+	}
 #endif
 };
 #ifndef RUNNING_FRC_TESTS
