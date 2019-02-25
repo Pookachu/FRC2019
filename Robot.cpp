@@ -387,15 +387,15 @@ class Robot : public frc::TimedRobot
 			m_kicktimer.Reset();
 			sequence = 1;
 		}
-		if(m_kicktimer.Get() < .2 & sequence == 1)
+		if(m_kicktimer.Get() < .5 & sequence == 1)
 		{
-			m_kick.Set(1);
+			m_kick.Set(.4);
 		}
-		else if(m_kicktimer.Get() < .4 & sequence == 1)
+		else if(m_kicktimer.Get() < 1 & sequence == 1)
 		{
 			m_kick.Set(-.5);
 		}
-		else if(m_kicktimer.Get() > .4 & sequence == 1)
+		else if(m_kicktimer.Get() > 1 & sequence == 1)
 		{
 			m_kick.Set(0);
 			sequence = 0;
