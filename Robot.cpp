@@ -102,6 +102,9 @@ class Robot : public frc::TimedRobot
 	//Lift
 	frc::PWMVictorSPX m_lift{PWMFour};
 
+	//Kick
+	frc::PWMTalonSRX m_kick{PWMEight};
+
 	//Tilt
 	frc::Spark m_tilt{PWMFive};
 
@@ -131,6 +134,7 @@ class Robot : public frc::TimedRobot
 	//Misc Declarations
 	//Timer init
 	frc::Timer m_timer;
+	frc::Timer m_kicktimer;
 
 	//LiveWindow init
 	//frc::LiveWindow& m_lw = *frc::LiveWindow::GetInstance();
@@ -215,10 +219,9 @@ class Robot : public frc::TimedRobot
 			started = true;
 			//Counter variable declaration
 			target = 0;
+			m_kicktimer.Start();
 			m_encoder->Reset();
 		}
-		m_solenoidOne.Set(m_stick.GetRawButton(1));
-		m_solenoidTwo.Set(m_stick.GetRawButton(1));
 		Working();
 	}
 
@@ -264,6 +267,8 @@ class Robot : public frc::TimedRobot
 		Drive();
 
 		Tilt();
+
+		Kick();
 
 		Grab();
 
@@ -371,6 +376,32 @@ class Robot : public frc::TimedRobot
 		{
 			m_tilt.Set(0);
 		}
+	}
+
+	void Kick()
+	{
+		static bool sequence = 0;
+		if (m_stick.GetRawButton(1) && sequence == 0)
+		{
+			m_kicktimer.Start();
+			m_kicktimer.Reset();
+			sequence = 1;
+		}
+		if(m_kicktimer.Get() < .2 & sequence == 1)
+		{
+			m_kick.Set(1);
+		}
+		else if(m_kicktimer.Get() < .4 & sequence == 1)
+		{
+			m_kick.Set(-.5);
+		}
+		else if(m_kicktimer.Get() > .4 & sequence == 1)
+		{
+			m_kick.Set(0);
+			sequence = 0;
+			m_kicktimer.Stop();
+		}
+		SmartDashboard::PutBoolean("Kick Sequence", sequence);
 	}
 
 	// Fetch and give LiftTargetControl button pressed info
@@ -590,7 +621,7 @@ class Robot : public frc::TimedRobot
 	    cs::UsbCamera camera = frc::CameraServer::GetInstance()->StartAutomaticCapture();
 
 	    // Set the resolution
-	    camera.SetResolution(320, 240);
+	    camera.SetResolution(640, 480);
 
 	    // Get a CvSink. This will capture Mats from the Camera
 	    cs::CvSink cvSink = frc::CameraServer::GetInstance()->GetVideo();
