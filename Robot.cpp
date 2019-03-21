@@ -3,6 +3,10 @@
 /* Open Source Software - may be modified and shared by FRC teams. The code   */
 /* must be accompanied by the FIRST BSD license file in the root directory of */
 /* the project.                                                               */
+/* Discord Hypesquad house of balance FTW                                     */
+/* Made by Ethan (2019).                                                      */
+/* For Support watch the documentation video at                               */
+/* https://www.youtube.com/watch?v=dQw4w9WgXcQ                                */
 /*----------------------------------------------------------------------------*/
 #include <thread>
 
@@ -17,69 +21,70 @@
 
 class Robot : public frc::TimedRobot
 {
-#if defined(__linux__)
-  private:
+//#if defined(__linux__)
+private:
 	//Static PI declaration
 	static constexpr double PI = 3.14159265359;
 
 	//Static PWM port declarations
-	static constexpr int 
-	PWMZero = 0,
-	PWMOne = 1,
-	PWMTwo = 2,
-	PWMThree = 3,
-	PWMFour = 4,
-	PWMFive = 5,
-	PWMSix = 6,
-	PWMSeven = 7,
-	PWMEight = 8,
-	PWMNine = 9,
+	static constexpr int
+			PWMZero = 0,
+			PWMOne = 1,
+			PWMTwo = 2,
+			PWMThree = 3,
+			PWMFour = 4,
+			PWMFive = 5, 
+			PWMSix = 6,
+			PWMSeven = 7,
+			PWMEight = 8,
+			PWMNine = 9,
 
-	//Static DIO port declarations
-	DIOZero = 0,
-	DIOOne = 1,
-	DIOTwo = 2,
-	DIOThree = 3,
-	DIOFour = 4,
-	DIOFive = 5,
-	DIOSix = 6,
-	DIOSeven = 7,
-	DIOEight = 8,
-	DIONine = 9,
+			//Static DIO port declarations
+			DIOZero = 0,
+			DIOOne = 1,
+			DIOTwo = 2,
+			DIOThree = 3,
+			DIOFour = 4,
+			DIOFive = 5,
+			DIOSix = 6,
+			DIOSeven = 7,
+			DIOEight = 8,
+			DIONine = 9,
 
-	//Static Analog port declarations
-	AnalogZero = 0,
-	AnalogOne = 1,
-	AnalogTwo = 2,
-	AnalogThree = 3,
+			//Static Analog port declarations
+			AnalogZero = 0,
+			AnalogOne = 1,
+			AnalogTwo = 2,
+			AnalogThree = 3,
 
-	//Static Relay port declarations
-	RelayZero = 0,
-	RelayOne = 1,
-	RelayTwo = 2,
-	RelayThree = 3,
+			//Static Relay port declarations
+			RelayZero = 0,
+			RelayOne = 1,
+			RelayTwo = 2,
+			RelayThree = 3,
 
-	//Static Can port declarations
-	CanZero = 0,
-	CanOne = 1,
-	CanTwo = 2,
-	CanThree = 3,
+			//Static Can port declarations
+			CanZero = 0,
+			CanOne = 1,
+			CanTwo = 2,
+			CanThree = 3,
 
-	//Static lift positon "variables"
-	//ball heights
-	Lpos1 = 120,
-	Lpos2 = 275,
-	Lpos3 = 370,
-	//panel heights
-	Lpos4 = 60,
-	Lpos5 = 230,
-	Lpos6 = 365;
+			//Static lift positon "variables"
+			//ball heights
+			Lpos1 = 62,
+			Lpos2 = 210,
+			Lpos3 = 350,
+			//panel heights
+			Lpos4 = 80,
+			Lpos5 = 230,
+			Lpos6 = 365;
 
 	static constexpr double hover = 0.05;
 	double CurrentLift;
 
 	//Joystick declaration
 	frc::Joystick m_stick{0};
+	frc::Joystick m_stick2{1};
 
 	//Drive motor declarations
 	/*
@@ -95,21 +100,21 @@ class Robot : public frc::TimedRobot
 	frc::MecanumDrive m_drive{m_frontLeft, m_rearLeft, m_frontRight, m_rearRight};
 
 	//Solenoid declaration (CAN)
-	frc::Solenoid m_solenoidOne{4};
-	frc::Solenoid m_solenoidTwo{7};
+	frc::Solenoid m_solenoidFront{4};
+	frc::Solenoid m_solenoidBack{7};
 
 	//Other motor definitions
 	//Lift
 	frc::PWMVictorSPX m_lift{PWMFour};
 
 	//Kick
-	frc::PWMTalonSRX m_kick{PWMEight};
+	//frc::PWMTalonSRX m_kick{PWMEight};
 
 	//Tilt
 	frc::Spark m_tilt{PWMFive};
 
 	//Grab
-	frc::Spark m_grab{PWMSix};
+	frc::Spark m_grab{PWMEight};
 
 	//Servo init
 	Servo *m_servo = new Servo(PWMSeven);
@@ -129,23 +134,25 @@ class Robot : public frc::TimedRobot
 	//Limit switch init
 	DigitalInput *m_topLimit = new DigitalInput(3);
 	DigitalInput *m_bottomLimit = new DigitalInput(6);
-	DigitalInput *m_climbLimit = new DigitalInput(4);
+	DigitalInput *m_climbLimitFront = new DigitalInput(4);
+	DigitalInput *m_climbLimitBack = new DigitalInput(5);
 
 	//Misc Declarations
 	//Timer init
 	frc::Timer m_timer;
 	frc::Timer m_kicktimer;
+	frc::Timer m_climbtimer;
 
 	//LiveWindow init
 	//frc::LiveWindow& m_lw = *frc::LiveWindow::GetInstance();
-  public:
+public:
 	//Ultrasonic calculation variables
 	//double ultraCal = 3.25;
 	//double distToWall;
 	//counter variables
 	//	double diameter = 6/12; // 6 inch wheels
 	double dist = 0.5 * 3.14 / 1024; // ft per pulse
-
+	bool Climb = 0;
 	double target = 0;
 	//Robot init function
 	bool started = 0;
@@ -172,19 +179,20 @@ class Robot : public frc::TimedRobot
 		//drive expiration? check later
 		m_drive.SetExpiration(0.1);
 
-		//Start VisionThread in a seperate thread
-		#if defined(__linux__)
-    	std::thread visionThread(VisionThread);
+//Start VisionThread in a seperate thread
+#if defined(__linux__)
+		std::thread visionThread(VisionThread);
 		visionThread.detach();
-	#else
+#else
 		wpi::errs() << "Vision only available on Linux.\n";
 		wpi::errs().flush();
-	#endif
+#endif
 	}
 
 	//AUTONOMOUS FUNCTIONS
 	void AutonomousInit() override
 	{
+		Climb = 0;
 		//Timer resets before we start autonomous
 		m_timer.Reset();
 		m_timer.Start();
@@ -194,6 +202,14 @@ class Robot : public frc::TimedRobot
 	}
 	void AutonomousPeriodic() override
 	{
+		if (m_timer.Get() <= .5)
+		{
+			m_tilt.Set(-.2);
+		}
+		else if(m_timer.Get() < 1 && m_timer.Get() > 1.5)
+		{
+			m_tilt.Set(0);
+		}
 		if (m_timer.Get() <= 2)
 		{
 			if (!(m_bottomLimit->Get()))
@@ -216,6 +232,7 @@ class Robot : public frc::TimedRobot
 		//Init once (Pragma haha)
 		if (started == false)
 		{
+			Climb = 0;
 			started = true;
 			//Counter variable declaration
 			target = 0;
@@ -228,6 +245,7 @@ class Robot : public frc::TimedRobot
 	void DisabledInit() override
 	{
 		target = 0;
+		Climb = false;
 	}
 	void Working()
 	{
@@ -242,7 +260,6 @@ class Robot : public frc::TimedRobot
 		/*
 		Solenoid Control Declaration
 		*/
-
 		/*
 		Debugging
 		*/
@@ -260,17 +277,25 @@ class Robot : public frc::TimedRobot
 
 		SmartDashboard::PutBoolean("Limit switch top", m_topLimit->Get());
 		SmartDashboard::PutBoolean("Limit switch bottom", m_bottomLimit->Get());
-		SmartDashboard::PutBoolean("Limit switch climb", m_climbLimit->Get());
+		SmartDashboard::PutBoolean("Limit switch climb front", m_climbLimitFront->Get());
+		SmartDashboard::PutBoolean("Limit switch climb back", m_climbLimitBack->Get());
 		/*
 		Seperate Functions for organization and simplicity (Declared below)
 		*/
+
 		Drive();
 
 		Tilt();
 
-		Kick();
-
-		Grab();
+		//if(m_timer.Get() < 135)
+		//																													{
+		//Kick();
+		//																													}
+		//else
+		//																													{
+		Solenoids(m_climbLimitFront->Get(), m_climbLimitBack->Get(), m_stick2.GetRawButton(1));
+		//																													}
+		Ball();
 
 		//SonicCalibration();
 
@@ -292,6 +317,93 @@ class Robot : public frc::TimedRobot
 			m_ahrs->ZeroYaw();
 		}
 	} */
+	void Solenoids(bool ClimbLimitFront, bool ClimbLimitBack, bool ClimbButton)
+	{
+		//State Variables
+		static bool
+			FrontUp = true,
+			Drive = false,
+			BackUp = true,
+			FrontPressed = false,
+			BackPressed = false;
+
+		static int
+			FrontCount = 0,
+			BackCount = 0;
+
+		//State Setup
+		if (FrontUp)
+		{
+			m_solenoidFront.Set(false);
+		}
+		else if ((!(FrontUp)))
+		{
+			m_solenoidFront.Set(true);
+		}
+
+		if (BackUp)
+		{
+			m_solenoidBack.Set(false);
+		}
+		else if ((!(BackUp)))
+		{
+			m_solenoidBack.Set(true);
+		}
+
+		if (ClimbButton)
+		{
+			target = 0;
+			Climb = true;
+			m_climbtimer.Start();
+			BackUp = false;
+			FrontUp = false;
+		}
+		else
+		{
+			Climb = false;
+			BackUp = true;
+			FrontUp = true;
+		}
+
+		if (Drive && Climb)
+		{
+			m_drive.DriveCartesian(0, .25, 0);
+		}
+
+		//Real Sequence
+		if (ClimbLimitFront && Climb)
+		{
+			FrontPressed = true;
+			if (FrontCount > 0)
+			{
+				FrontUp = true;
+			}
+		}
+		else if(FrontPressed && Climb)
+		{
+			FrontCount++;
+			FrontPressed = false;
+		}
+
+		if (ClimbLimitBack && Climb)
+		{
+			BackPressed = true;
+			if (BackCount > 0)
+			{
+				BackUp = true;
+			}
+		}
+		else if(BackPressed && Climb)
+		{
+			BackCount++;
+			BackPressed = false;
+		}
+
+		if (m_climbtimer.Get() > 10)
+		{
+			Drive = false;
+		}
+	}
 
 	void Drive()
 	{
@@ -299,7 +411,7 @@ class Robot : public frc::TimedRobot
 		double driveX = m_stick.GetX();
 		double driveY = m_stick.GetY();
 		double driveZ = m_stick.GetZ();
-		double driveThrottle = (((m_stick.GetThrottle()+1)/2)*-1);
+		double driveThrottle = (((m_stick.GetThrottle() + 1) / 2) * -1);
 		//Set deadzone
 		double deadZone = 0.1;
 		double magnitude = sqrt(driveX * driveX + driveY * driveY);
@@ -319,10 +431,28 @@ class Robot : public frc::TimedRobot
 		driveX *= magnitude; //scale each amount
 		driveY *= magnitude;
 
-		m_drive.DriveCartesian(
+
+		if(m_stick.GetPOV() == -1)
+		{
+			m_drive.DriveCartesian(
 				driveThrottle * (driveX * -1), //reversed
 				driveThrottle * driveY,
 				driveThrottle * -driveZ);
+		}
+		else if(m_stick.GetPOV() == 90)
+		{
+			m_drive.DriveCartesian(
+				.75, 
+				driveThrottle * driveY,
+				driveThrottle * -driveZ);
+		}
+		else if(m_stick.GetPOV() == 270)
+		{
+			m_drive.DriveCartesian(
+				-.75,
+				driveThrottle * driveY,
+				driveThrottle * -driveZ);
+		}
 	}
 
 	//DEPRECATED
@@ -340,15 +470,15 @@ class Robot : public frc::TimedRobot
 		}
 	}*/
 
-	void Grab()
+	void Ball()
 	{
 		//Basic control scheme
-		if (m_stick.GetRawButton(6))
+		if (m_stick.GetRawButton(4) || m_stick.GetRawButton(1))
 		{
 			m_grab.Set(.5);
 			return;
 		}
-		else if (m_stick.GetRawButton(4))
+		else if (m_stick.GetRawButton(6))
 		{
 			m_grab.Set(-.5);
 			return;
@@ -364,10 +494,12 @@ class Robot : public frc::TimedRobot
 		//Basic control scheme
 		if (m_stick.GetRawButton(5))
 		{
-			m_tilt.Set(.8);
+			m_tilt.Set(.7);
 			return;
 		}
-		else if (m_stick.GetRawButton(3))
+		else if (m_stick.GetRawButton(3) 
+			|| m_stick.GetRawButton(1) 
+			|| m_stick.GetRawButton(4))
 		{
 			m_tilt.Set(-.5);
 			return;
@@ -380,28 +512,29 @@ class Robot : public frc::TimedRobot
 
 	void Kick()
 	{
-		static bool sequence = 0;
+		
+		/*static bool sequence = 0;
 		if (m_stick.GetRawButton(1) && sequence == 0)
 		{
 			m_kicktimer.Start();
 			m_kicktimer.Reset();
 			sequence = 1;
 		}
-		if(m_kicktimer.Get() < .5 & sequence == 1)
+		if (m_kicktimer.Get() < .2 & sequence == 1)
 		{
-			m_kick.Set(.4);
+			m_kick.Set(1);
 		}
-		else if(m_kicktimer.Get() < 1 & sequence == 1)
+		else if (m_kicktimer.Get() < .4 & sequence == 1)
 		{
 			m_kick.Set(-.5);
 		}
-		else if(m_kicktimer.Get() > 1 & sequence == 1)
+		else if (m_kicktimer.Get() > .4 & sequence == 1)
 		{
 			m_kick.Set(0);
 			sequence = 0;
 			m_kicktimer.Stop();
 		}
-		SmartDashboard::PutBoolean("Kick Sequence", sequence);
+		SmartDashboard::PutBoolean("Kick Sequence", sequence);*/
 	}
 
 	// Fetch and give LiftTargetControl button pressed info
@@ -570,7 +703,7 @@ class Robot : public frc::TimedRobot
 		if (m_stick.GetPOV() == 180 && AdjustDown == false)
 		{
 			target = target - 5;
-			LiftMiddle = (CurrentLift + target) * .75 ;
+			LiftMiddle = (CurrentLift + target) * .75;
 			AdjustUp = false;
 			AdjustDown = true;
 		}
@@ -615,43 +748,43 @@ class Robot : public frc::TimedRobot
 	}
 
 	//VisionThread Declaration
-		static void VisionThread()
+	static void VisionThread()
 	{
-	    // Get the USB camera from CameraServer
-	    cs::UsbCamera camera = frc::CameraServer::GetInstance()->StartAutomaticCapture();
+		// Get the USB camera from CameraServer
+		cs::UsbCamera camera = frc::CameraServer::GetInstance()->StartAutomaticCapture();
 
-	    // Set the resolution
-	    camera.SetResolution(640, 480);
+		// Set the resolution
+		camera.SetResolution(640, 480);
 
-	    // Get a CvSink. This will capture Mats from the Camera
-	    cs::CvSink cvSink = frc::CameraServer::GetInstance()->GetVideo();
+		// Get a CvSink. This will capture Mats from the Camera
+		cs::CvSink cvSink = frc::CameraServer::GetInstance()->GetVideo();
 
-	    // Setup a CvSource. This will send images back to the Dashboard
-	     cs::CvSource outputStream = frc::CameraServer::GetInstance()->PutVideo("Rectangle", 640, 480);
+		// Setup a CvSource. This will send images back to the Dashboard
+		cs::CvSource outputStream = frc::CameraServer::GetInstance()->PutVideo("Rectangle", 640, 480);
 
-	    // Mats are very memory expensive. Lets reuse this Mat.
-	    cv::Mat mat;
+		// Mats are very memory expensive. Lets reuse this Mat.
+		cv::Mat mat;
 
-	    while (true) 
+		while (true)
 		{
-	    	// Tell the CvSink to grab a frame from the camera and
-	    	// put it
-	    	// in the source mat.  If there is an error notify the
-	    	// output.
-	    	if (cvSink.GrabFrame(mat) == 0) 
+			// Tell the CvSink to grab a frame from the camera and
+			// put it
+			// in the source mat.  If there is an error notify the
+			// output.
+			if (cvSink.GrabFrame(mat) == 0)
 			{
 				// Send the output the error.
-   		 		outputStream.NotifyError(cvSink.GetError());
-   	 			// skip the rest of the current iteration
-   	 			continue;
-   	 		}
-    		// Put a rectangle on the image
-    		rectangle(mat, cv::Point(100, 100), cv::Point(400, 400), cv::Scalar(255, 255, 255), 5);
-    		// Give the output stream a new image to display
-    		outputStream.PutFrame(mat);
-    	} 
+				outputStream.NotifyError(cvSink.GetError());
+				// skip the rest of the current iteration
+				continue;
+			}
+			// Put a rectangle on the image
+			rectangle(mat, cv::Point(330, 30), cv::Point(310, 260), cv::Scalar(255, 255, 255), 5);
+			// Give the output stream a new image to display
+			outputStream.PutFrame(mat);
+		}
 	}
-#endif
+//#endif
 };
 #ifndef RUNNING_FRC_TESTS
 int main()
@@ -659,3 +792,4 @@ int main()
 	return frc::StartRobot<Robot>();
 }
 #endif
+// discordapp.com/invite/GFgEJKN
